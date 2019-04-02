@@ -155,4 +155,6 @@ class ETL_transform:
             writeFile.close()
 '''
 
+#SCRIVO QUI 
+
 #SELECT test2_table.distretto, COUNT(*) AS cnt FROM test2_table GROUP BY test2_table.distretto ORDER BY 2 DESC
