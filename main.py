@@ -70,18 +70,18 @@ def exportDimensionDurataToCsv(dict, path, lastID):
     #lastID: è l'ultimo id inserito prima delle operazioni di aggiornamento
     with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
-            if k>lastID:
+            if k>=lastID:
                 dimRow = [k,v, 0, 0, 0, 0]
                 print(dimRow)
-                if(v<30):
+                if(v<=30):
                     print("12<30")
-                if (v>25):
+                if (v>=25):
                     dimRow[5] = 1
-                if (v<5):
+                if (v<=5):
                     dimRow[2] = 1
-                if (v<15):
+                if (v<=15):
                     dimRow[3] = 1
-                if (v<25):
+                if (v<=25):
                     dimRow[4] = 1
 
                 #cur.execute("INSERT INTO test_dim_durata VALUES (%s, %s, %s, %s, %s, %s, %s)", (dimRow[0], dimRow[1], dimRow[2], dimRow[3], dimRow[4], dimRow[5], ))
@@ -89,11 +89,9 @@ def exportDimensionDurataToCsv(dict, path, lastID):
                 fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
     fl.close()
 
-def exportFactToCsv(path, manRow, rowDim):
-    with open(path, 'a',newline='') as f2:
+def exportFactToCsv(f, manRow, rowDim):
         stw = (manRow[0]) + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(manRow[4]) + "," + ((manRow[5])) + "," + ((manRow[6])) + ("\n")
-        f2.write(stw)
-    f2.close()
+        f.write(stw)
 
 def csvToPostgres(csvPath,tablename,cur,con):
     with open(csvPath, 'r') as f:
@@ -115,6 +113,7 @@ tempTableDurata={}
 lastID=putDurationTableInDictionary(tempTableDurata)
 
 open(fact_csvPATH, 'w').close()
+f=open(fact_csvPATH, 'a', newline='')
 
 start_time = time.time()
 with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
@@ -128,7 +127,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 manRow = rowManipulation(row)
                 rowDim=getDimensionDurationRow(manRow, cur, tempTableDurata)
                 if rowDim is not None:
-                    exportFactToCsv(fact_csvPATH, manRow, rowDim)
+                    exportFactToCsv(f, manRow, rowDim)
                     #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
@@ -138,6 +137,8 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
 
 csvToPostgres(dim_durata_csvPATH,'test_dim_duration',cur,conn)
 csvToPostgres(fact_csvPATH,'test_fact',cur,conn)
+
+f.close()
 
 print("Tempo ETL (sec): %s" % (time.time() - start_time))
 print("Righe non valide: %s" % (cntNotValidRows))
