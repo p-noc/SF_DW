@@ -90,7 +90,7 @@ def exportDimensionDurataToCsv(dict, path, lastID):
     fl.close()
 
 def exportFactToCsv(f, manRow, rowDim):
-        stw = (manRow[0]) + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(manRow[4]) + "," + ((manRow[5])) + "," + ((manRow[6])) + ("\n")
+        stw = (manRow[0]) + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(rowDim) + "," + ((manRow[5])) + "," + ((manRow[6])) + ("\n")
         f.write(stw)
 
 def csvToPostgres(csvPath,tablename,cur,con):
