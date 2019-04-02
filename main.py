@@ -13,6 +13,16 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_fact(call_num integer NOT NULL,unit_id varchar(20) NOT NULL,received_date timestamp without time zone, onScene_date timestamp without time zone,duration_id smallint,declared_prior varchar(1),final_prior varchar(1))")
     conn.commit()
 
+def putDurationTableInDictionary(dict):
+    cur.execute("SELECT test_dim_duration.idDuration, test_dim_duration.minutes FROM test_dim_duration")
+    queryRes=cur.fetchall()
+    for k in queryRes:
+        dict[k[0]]=k[1]
+    if len(queryRes)>0:
+        return queryRes[len(queryRes)-1][0]
+    else:
+        return 0
+
 def getDimensionDurationRow(row, cur, tempTableDurata):
     durata=row[4]
     if (durata not in tempTableDurata.values()):
@@ -56,27 +66,27 @@ def rowValidation(row):
         return False
     return True
 
-def exportDimensionDurataToCsv(dict, path):
-    print(dict)
+def exportDimensionDurataToCsv(dict, path, lastID):
+    #lastID: è l'ultimo id inserito prima delle operazioni di aggiornamento
     with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
-            dimRow = [k,v, 0, 0, 0, 0]
-            print(dimRow)
-            if(v<30):
-                print("12<30")
+            if k>lastID:
+                dimRow = [k,v, 0, 0, 0, 0]
+                print(dimRow)
+                if(v<30):
+                    print("12<30")
+                if (v>25):
+                    dimRow[5] = 1
+                if (v<5):
+                    dimRow[2] = 1
+                if (v<15):
+                    dimRow[3] = 1
+                if (v<25):
+                    dimRow[4] = 1
 
-            if (v>25):
-                dimRow[5] = 1
-            if (v<5):
-                dimRow[2] = 1
-            if (v<15):
-                dimRow[3] = 1
-            if (v<25):
-                dimRow[4] = 1
+                #cur.execute("INSERT INTO test_dim_durata VALUES (%s, %s, %s, %s, %s, %s, %s)", (dimRow[0], dimRow[1], dimRow[2], dimRow[3], dimRow[4], dimRow[5], ))
 
-            #cur.execute("INSERT INTO test_dim_durata VALUES (%s, %s, %s, %s, %s, %s, %s)", (dimRow[0], dimRow[1], dimRow[2], dimRow[3], dimRow[4], dimRow[5], ))
-
-            fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
+                fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
     fl.close()
 
 def exportFactToCsv(path, manRow, rowDim):
@@ -92,7 +102,7 @@ def csvToPostgres(csvPath,tablename,cur,con):
 
 
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
-inputCsvPath = Path.cwd() / 'datasource/testPython.csv' #r"\datasource\testPython.csv"
+inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv' #r"\datasource\testPython.csv"
 dim_durata_csvPATH = Path.cwd() / 'output/dim_durata.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
 fact_csvPATH = Path.cwd() / 'output/fact.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
 
@@ -100,7 +110,11 @@ conn = psycopg2.connect(postgresConnectionString)
 cur = conn.cursor()
 
 createTables(cur,conn)
+
 tempTableDurata={}
+lastID=putDurationTableInDictionary(tempTableDurata)
+
+open(fact_csvPATH, 'w').close()
 
 start_time = time.time()
 with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
@@ -120,7 +134,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 cntNotValidRows=cntNotValidRows+1
         else:
             cnt = cnt + 1
-    exportDimensionDurataToCsv(tempTableDurata, dim_durata_csvPATH)
+    exportDimensionDurataToCsv(tempTableDurata, dim_durata_csvPATH,lastID)
 
 csvToPostgres(dim_durata_csvPATH,'test_dim_duration',cur,conn)
 csvToPostgres(fact_csvPATH,'test_fact',cur,conn)
