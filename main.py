@@ -38,12 +38,18 @@ def getDateId(row):
     #TODO
 
 #convert unknown priority values to known ones (2 non-emergency,3 emergency)
-def mapPriority(row):
-    #TODO
-    # idea: 1 A B -> 2
-    # C E I -> 3
-    1+1; #placeholder
+def mapPriority(priority):
+    # Priority levels:
+    # A,B,C | 2 (driving without lights/sirens)
+    # D,E   | 3 (driving with lights/sirens)
+    # I     | 1
 
+    if (priority=="A") or (priority=="B" or (priority=="C") or (priority=="2")):
+        return 2
+    elif (priority=="D") or (priority=="E") or (priority=="3"):
+        return 3
+    else: #(priority=="1") or (priority=="I"):
+        return 1
 
 def rowManipulation(row):
     #Evaluate intervention duration
@@ -53,10 +59,12 @@ def rowManipulation(row):
     d3 =(int(d3.seconds/60))
 
     #convert priority to a known readable format
-    mapPriority(row);
+    mapPriority(row[21])
+    mapPriority(row[22])
+    mapPriority(row[23])
 
     #create the fact row
-    manRow=(row[0], row[1], row[6], row[10],d3,row[21],row[23])
+    manRow=(row[0], row[1], row[6], row[10],d3,row[21],row[22],row[23])
     '''
     for i in range(32):
         print(i,row[i])
@@ -69,8 +77,10 @@ def rowValidation(row):
         return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
         return False
-    #if row[25]=="":     #Colonna 25: priorità finale, non può essere nulla  ? TODO
-        #return False
+    if row[22]=="":     #Colonna 22: priorità chiamata, non può essere nulla
+        return False
+    if row[23]=="":     #Colonna 23: priorità finale, non può essere nulla
+        return False
     if row[10]=="":     #Colonna 10: data intervento
         row[10]=row[6]
     if row[10]<row[6]:  #Colonna 6: data arrivo, controlla che le date non siano in conflitto
