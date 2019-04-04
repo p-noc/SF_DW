@@ -8,7 +8,7 @@ cntNotValidRows=0
 cntValidRows=0
 
 def createTables(cur,conn):
-    cur.execute("CREATE TABLE IF NOT EXISTS test_received_date(rec_date_id smallint NOT NULL,datetime timestamp without time zone,second_f smallint,minute_f smallint,hour_f smallint,day_f smallint,month_f smallint,year_f smallint,season smallint)")
+    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_received_date(rec_date_id integer NOT NULL,datetime timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_duration (idDuration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
     cur.execute("CREATE TABLE IF NOT EXISTS test_fact(call_num integer NOT NULL,unit_id varchar(20) NOT NULL,received_date timestamp without time zone, onScene_date timestamp without time zone,duration_id smallint,declared_prior varchar(1),final_prior varchar(1))")
     conn.commit()
@@ -23,13 +23,12 @@ def putDurationTableInDictionary(dict):
     else:
         return 0
 
-def getDimensionDurationRow(row, cur, tempTableDurata):
-    durata=row[4]
-    if (durata not in tempTableDurata.values()):
-        tempTableDurata[len(tempTableDurata)] = durata
+def getDimensionDurationRow(duration, tempTableDurata):
+    if (duration not in tempTableDurata.values()):
+        tempTableDurata[len(tempTableDurata)] = duration
 
     for idd,dur in tempTableDurata.items():
-        if dur==durata:
+        if dur==duration:
             return idd
 
 #find or generate the foreign id for the arriveDate dimension
@@ -43,7 +42,6 @@ def mapPriority(priority):
     # A,B,C | 2 (driving without lights/sirens)
     # D,E   | 3 (driving with lights/sirens)
     # I     | 1
-
     if (priority=="A") or (priority=="B" or (priority=="C") or (priority=="2")):
         return 2
     elif (priority=="D") or (priority=="E") or (priority=="3"):
@@ -59,12 +57,12 @@ def rowManipulation(row):
     d3 =(int(d3.seconds/60))
 
     #convert priority to a known readable format
-    mapPriority(row[21])
-    mapPriority(row[22])
-    mapPriority(row[23])
+    origPriorityMapped=mapPriority(row[21])
+    callPriorityMapped=mapPriority(row[22])
+    finalPriorityMapped=mapPriority(row[23])
 
     #create the fact row
-    manRow=(row[0], row[1], row[6], row[10],d3,row[21],row[22],row[23])
+    manRow=(row[0], row[1], row[6], row[10],d3,"",origPriorityMapped,finalPriorityMapped)
     '''
     for i in range(32):
         print(i,row[i])
@@ -110,8 +108,8 @@ def exportDimensionDurataToCsv(dict, path, lastID):
                 fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
     fl.close()
 
-def exportFactToCsv(f, manRow, rowDim):
-        stw = (manRow[0]) + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(rowDim) + "," + ((manRow[5])) + "," + ((manRow[6])) + ("\n")
+def exportFactToCsv(f, manRow, idDuration):
+        stw = (manRow[0] + "," +  repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(idDuration) + "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n")
         f.write(stw)
 
 def csvToPostgres(csvPath,tablename,cur,con):
@@ -146,10 +144,10 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
             if valResult:
                 cntValidRows=cntValidRows+1
                 manRow = rowManipulation(row)
-                rowDim=getDimensionDurationRow(manRow, cur, tempTableDurata)
+                idDuration=getDimensionDurationRow(manRow[4], tempTableDurata)
                 dateId= getDateId(manRow)
-                if rowDim is not None:
-                    exportFactToCsv(f, manRow, rowDim)
+                if idDuration is not None:
+                    exportFactToCsv(f, manRow, idDuration)
                     #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
