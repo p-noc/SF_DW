@@ -11,6 +11,8 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_received_date(rec_date_id integer NOT NULL,datetime timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_duration (idDuration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
     cur.execute("CREATE TABLE IF NOT EXISTS test_fact(call_num integer NOT NULL,unit_id varchar(20) NOT NULL,received_date timestamp without time zone, onScene_date timestamp without time zone,duration_id smallint,declared_prior varchar(1),final_prior varchar(1))")
+    #cur.execute() crea table location
+    #cur.execute() crea table date
     conn.commit()
 
 def putDurationTableInDictionary(dict):
@@ -23,6 +25,12 @@ def putDurationTableInDictionary(dict):
     else:
         return 0
 
+def putLocationTableInDictionary():
+    return 0
+
+def putDateTableInDictionary():
+    return 0
+
 def getDimensionDurationRow(duration, tempTableDurata):
     if (duration not in tempTableDurata.values()):
         tempTableDurata[len(tempTableDurata)] = duration
@@ -31,10 +39,11 @@ def getDimensionDurationRow(duration, tempTableDurata):
         if dur==duration:
             return idd
 
-#find or generate the foreign id for the arriveDate dimension
-def getDateId(row):
-    arriveDate=row[7] #7 in the original DB, minus 1 in python?
-    #TODO
+def getDimensionDateRow():
+    return 0
+
+def getDimensionLocationRow():
+    return 0
 
 #convert unknown priority values to known ones (2 non-emergency,3 emergency)
 def mapPriority(priority):
@@ -108,7 +117,14 @@ def exportDimensionDurataToCsv(dict, path, lastID):
                 fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
     fl.close()
 
-def exportFactToCsv(f, manRow, idDuration):
+def exportDimensionDateToCsv():
+    return 0
+
+def exportDimensionLocationToCsv():
+    return 0
+
+
+def exportFactToCsv(f, manRow, idDuration, idDate, idLocation):
         stw = (manRow[0] + "," +  repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(idDuration) + "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n")
         f.write(stw)
 
@@ -120,7 +136,9 @@ def csvToPostgres(csvPath,tablename,cur,con):
 
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
 inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv' #r"\datasource\testPython.csv"
-dim_durata_csvPATH = Path.cwd() / 'output/dim_durata.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
+dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
+dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
+dimLocationCSVPath= Path.cwd() / 'output/dim_location.csv'
 fact_csvPATH = Path.cwd() / 'output/fact.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
 
 conn = psycopg2.connect(postgresConnectionString)
@@ -128,8 +146,16 @@ cur = conn.cursor()
 
 createTables(cur,conn)
 
+# Dictionaries
 tempTableDurata={}
-lastID=putDurationTableInDictionary(tempTableDurata)
+tempTableLocation={}
+tempTableDate={}
+
+# Fill dictionaries and fetch latest id
+lastIDDuration=putDurationTableInDictionary(tempTableDurata)
+lastIDLocation=putLocationTableInDictionary()
+lastIDDate=putDateTableInDictionary()
+
 
 open(fact_csvPATH, 'w').close()
 f=open(fact_csvPATH, 'a', newline='')
@@ -144,18 +170,24 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
             if valResult:
                 cntValidRows=cntValidRows+1
                 manRow = rowManipulation(row)
+
                 idDuration=getDimensionDurationRow(manRow[4], tempTableDurata)
-                dateId= getDateId(manRow)
+                idDate=getDimensionDateRow()
+                idLocation=getDimensionLocationRow()
+
                 if idDuration is not None:
-                    exportFactToCsv(f, manRow, idDuration)
+                    exportFactToCsv(f, manRow, idDuration, idDate, idLocation)
                     #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
         else:
             cnt = cnt + 1
-    exportDimensionDurataToCsv(tempTableDurata, dim_durata_csvPATH,lastID)
+    exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
+    exportDimensionDateToCsv()
+    exportDimensionLocationToCsv()
 
-csvToPostgres(dim_durata_csvPATH,'test_dim_duration',cur,conn)
+
+csvToPostgres(dimDurationCSVPath, 'test_dim_duration', cur, conn)
 csvToPostgres(fact_csvPATH,'test_fact',cur,conn)
 
 f.close()
