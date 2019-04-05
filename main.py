@@ -142,7 +142,7 @@ def exportDimensionDurataToCsv(dict, path, lastID):
     #lastID: è l'ultimo id inserito prima delle operazioni di aggiornamento
     with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
-            if k>lastID:
+            if k>=lastID:
                 dimRow = [k,v, 0, 0, 0, 0]
                 if (v>=25):
                     dimRow[5] = 1
@@ -161,7 +161,7 @@ def exportDimensionDurataToCsv(dict, path, lastID):
 def exportDimensionDateToCsv(dict,path,lastID):
     with open(path,'w',newline='') as fl:
         for k,v in dict.items():
-            if v>lastID:
+            if v>=lastID:
                 dt=datetime.datetime.strptime(k,"%Y-%m-%dT%H:%M:%S")
                 fl.write(repr(v) + "," + k + "," + repr(dt.hour)+ "," + repr(dt.day)+ "," + repr(dt.month)+ "," + repr(dt.year)+ "," + repr(dt.year)+ "\n")
     fl.close()
@@ -172,7 +172,7 @@ def exportDimensionLocationToCsv(dict, path, lastID):
 
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v > lastID:
+            if v >=lastID:
                 fieldsList=k.split("@")
                 fl.write(repr(v) + "," + fieldsList[0] + "," + fieldsList[1] + "," + fieldsList[2] + "," + fieldsList[3] + "\n")
     fl.close()
@@ -231,7 +231,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 idLocation=getDimensionLocationRow(manRow[8],manRow[9],manRow[10],manRow[11],tempTableLocation)
 
                 if idDuration is not None:
-                    exportFactToCsv(f, manRow, idDuration+1, idDate+1, idLocation+1)
+                    exportFactToCsv(f, manRow, idDuration, idDate, idLocation)
                     #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
