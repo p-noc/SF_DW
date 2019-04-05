@@ -10,7 +10,7 @@ cntValidRows=0
 def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_received_date(rec_date_id integer NOT NULL,datetime timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_duration (idDuration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_fact(call_num integer NOT NULL,unit_id varchar(20) NOT NULL,received_date timestamp without time zone, onScene_date timestamp without time zone,duration_id smallint,declared_prior varchar(1),final_prior varchar(1))")
+    cur.execute("CREATE TABLE IF NOT EXISTS test_fact(id_date integer, id_duration smallint, id_location smallint, call_num integer NOT NULL,unit_id varchar(20) NOT NULL,onScene_date timestamp without time zone,declared_prior varchar(1),final_prior varchar(1))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location smallint NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
 
     conn.commit()
@@ -38,8 +38,17 @@ def putLocationTableInDictionary(dict):
         return 0
 
 
-def putDateTableInDictionary():
-    return 0
+def putDateTableInDictionary(dict):
+    cur.execute("SELECT test_dim_received_date.rec_date_id, test_dim_received_date.datetime FROM test_dim_received_date")
+    queryRes=cur.fetchall()
+
+    for k,j in queryRes:
+        dict[j.strftime("%Y-%m-%dT%H:%M:%S")]=k
+
+    if len(queryRes) > 0:
+        return queryRes[len(queryRes) - 1][0]
+    else:
+        return 0
 
 def getDimensionDurationRow(duration, tempTableDurata):
     if (duration not in tempTableDurata.values()):
@@ -49,8 +58,13 @@ def getDimensionDurationRow(duration, tempTableDurata):
         if dur==duration:
             return idd
 
-def getDimensionDateRow():
-    return 0
+def getDimensionDateRow(recDate,tempTableDate):
+    res=tempTableDate.get(recDate)
+    if res is None:
+        tempTableDate[recDate]=len(tempTableDate)
+        return len(tempTableDate)-1
+    else:
+        return res
 
 def getDimensionLocationRow(address,city,zipcode,neigh,tempTableLocation):
     dimensionString=address + "@" + city + "@" + zipcode + "@" + neigh
@@ -144,8 +158,13 @@ def exportDimensionDurataToCsv(dict, path, lastID):
                 fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
     fl.close()
 
-def exportDimensionDateToCsv():
-    return 0
+def exportDimensionDateToCsv(dict,path,lastID):
+    with open(path,'w',newline='') as fl:
+        for k,v in dict.items():
+            if v>lastID:
+                dt=datetime.datetime.strptime(k,"%Y-%m-%dT%H:%M:%S")
+                fl.write(repr(v) + "," + k + "," + repr(dt.hour)+ "," + repr(dt.day)+ "," + repr(dt.month)+ "," + repr(dt.year)+ "," + repr(dt.year)+ "\n")
+    fl.close()
 
 def exportDimensionLocationToCsv(dict, path, lastID):
     # lastID: è l'ultimo id inserito prima delle operazioni di aggiornamento
@@ -155,13 +174,12 @@ def exportDimensionLocationToCsv(dict, path, lastID):
         for k, v in dict.items():
             if v > lastID:
                 fieldsList=k.split("@")
-                print(fieldsList)
                 fl.write(repr(v) + "," + fieldsList[0] + "," + fieldsList[1] + "," + fieldsList[2] + "," + fieldsList[3] + "\n")
     fl.close()
 
 
 def exportFactToCsv(f, manRow, idDuration, idDate, idLocation):
-        stw = (manRow[0] + "," +  repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(idDuration) + "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n")
+        stw = (repr(idDate)+ "," + repr(idDuration) + "," + repr(idLocation) + "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
         f.write(stw)
 
 def csvToPostgres(csvPath,tablename,cur,conn):
@@ -191,7 +209,7 @@ tempTableDate={}
 # Fill dictionaries and fetch latest id
 lastIDDuration=putDurationTableInDictionary(tempTableDurata)
 lastIDLocation=putLocationTableInDictionary(tempTableLocation)
-lastIDDate=putDateTableInDictionary()
+lastIDDate=putDateTableInDictionary(tempTableDate)
 
 
 open(fact_csvPATH, 'w').close()
@@ -209,24 +227,25 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 manRow = rowManipulation(row)
 
                 idDuration=getDimensionDurationRow(manRow[4], tempTableDurata)
-                idDate=getDimensionDateRow()
+                idDate=getDimensionDateRow(manRow[2],tempTableDate)
                 idLocation=getDimensionLocationRow(manRow[8],manRow[9],manRow[10],manRow[11],tempTableLocation)
 
                 if idDuration is not None:
-                    exportFactToCsv(f, manRow, idDuration, idDate, idLocation)
+                    exportFactToCsv(f, manRow, idDuration+1, idDate+1, idLocation+1)
                     #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
         else:
             cnt = cnt + 1
     exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
-    exportDimensionDateToCsv()
+    exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
     exportDimensionLocationToCsv(tempTableLocation,dimLocationCSVPath,lastIDLocation)
 
 
 csvToPostgres(dimDurationCSVPath, 'test_dim_duration', cur, conn)
 csvToPostgres(fact_csvPATH,'test_fact',cur,conn)
 csvToPostgres(dimLocationCSVPath,'test_dim_location',cur,conn)
+csvToPostgres(dimDateCSVPath,'test_dim_received_date',cur,conn)
 
 f.close()
 
