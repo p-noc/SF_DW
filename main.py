@@ -11,9 +11,9 @@ cntValidRows=0
 def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_received_date(rec_date_id integer NOT NULL,datetime timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_duration (idDuration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_fact(id_date integer, id_duration smallint, id_location smallint, call_num integer NOT NULL,unit_id varchar(20) NOT NULL,onScene_date timestamp without time zone,declared_prior varchar(1),final_prior varchar(1))")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location smallint NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
-    # TODO_A cur.execute("CREATE") dim_responsibility
+    cur.execute("CREATE TABLE IF NOT EXISTS test_fact(id_date integer, id_duration smallint, id_location integer,id_responsibility smallint, call_num integer NOT NULL,unit_id varchar(20) NOT NULL,onScene_date timestamp without time zone,declared_prior varchar(1),final_prior varchar(1))")
+    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
+    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_responsibility(id_responsibility smallint, box smallint,station_area smallint, battalion varchar(5))")
     # TODO_B cur.execute("CREATE") dim_call_type
 
     conn.commit()
@@ -28,13 +28,13 @@ def putDurationTableInDictionary(dict):
     else:
         return 0
 
-def putLocationTableInDictionary(dict):
+def putLocationTableInDictionary(dictLoc):
     cur.execute("SELECT * FROM test_dim_location")
     queryRes=cur.fetchall()
 
     for k in queryRes:
         locationString=k[1]+"@"+k[2]+"@"+str(k[3])+"@"+k[4]
-        dict[locationString]=k[0]
+        dictLoc[locationString]=k[0]
     if len(queryRes)>0:
         return queryRes[len(queryRes)-1][0]
     else:
@@ -53,9 +53,17 @@ def putDateTableInDictionary(dict):
     else:
         return 0
 
-def putResponsibilityTableInDictionary(dict):
-    # TODO_A
-    return 0
+def putResponsibilityTableInDictionary(dictResp):
+    cur.execute("SELECT * FROM test_dim_responsibility")
+    queryRes=cur.fetchall()
+    for k in queryRes:
+        responsString=k[1]+"@"+k[2]+"@"+(k[3])
+        dictResp[responsString]=k[0]
+    if len(queryRes)>0:
+        return queryRes[len(queryRes)-1][0]
+    else:
+        return 0
+
 
 def putCallTypeTableInDictionary(dict):
     # TODO_B
@@ -95,8 +103,14 @@ def getDimensionLocationRow(address,city,zipcode,neigh,tempTableLocation):
             return idd
     '''
 
-def getDimensionResponsibilityRow():
-    # TODO_A
+def getDimensionResponsibilityRow(box,station_area,battalion,tempTableResponsibility):
+    responsibility=box+"@"+station_area+"@"+battalion
+    id = tempTableResponsibility.get(responsibility)
+    if (id is None):
+        tempTableResponsibility[responsibility] = len(tempTableResponsibility)
+        return len(tempTableLocation)-1
+    else:
+        return id
     return 0
 
 def getDimensionCallTypeRow():
@@ -167,7 +181,7 @@ def rowManipulation(row):
     lat_lon=latitude+","+longitude;
 
     #create the fact row
-    manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,"",origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood)
+    manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,0,origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood,box,station_area,battalion)
     '''
     for i in range(32):
         print(i,row[i])
@@ -193,6 +207,8 @@ def rowValidation(row):
     if row[16]=="":     #Colonna 16: city
         return False
     if row[17]=="":     #Colonna 17: zipcode
+        return False
+    if row[19]=="":     #Colonna 19: station area
         return False
     return True
 
@@ -240,20 +256,27 @@ def exportDimensionLocationToCsv(dict, path, lastID):
         for k, v in dict.items():
             if v >=lastID:
                 fieldsList=k.split("@")
+                print(fieldsList)
                 fl.write(repr(v) + "," + fieldsList[0] + "," + fieldsList[1] + "," + fieldsList[2] + "," + fieldsList[3] + "\n")
     fl.close()
 
-def exportDimensionResponsibilityToCsv():
-    # TODO_A
+def exportDimensionResponsibilityToCsv(dict,path,lastID):
+    with open(path, 'w', newline='') as fl:
+        for k, v in dict.items():
+            if v >= lastID:
+                fieldsList = k.split("@")
+                fl.write(repr(v) + "," + fieldsList[0] + "," + fieldsList[1] + "," + fieldsList[2]+ "\n")
+    fl.close()
     return 0
 
 def exportDimensionCallTypeToCsv():
     # TODO_B
     return 0
 
-def exportFactToCsv(f, manRow, idDuration, idDate, idLocation):
-        stw = (repr(idDate)+ "," + repr(idDuration) + "," + repr(idLocation) + "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
-        f.write(stw)
+#TODO_B
+def exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility):
+    stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idLocation) + "," + repr(idResponsibility) + "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
+    f.write(stw)
 
 def csvToPostgres(csvPath,tablename,cur,conn):
     with open(csvPath, 'r') as f:
@@ -288,7 +311,7 @@ tempTableCallType={}
 lastIDDuration=putDurationTableInDictionary(tempTableDurata)
 lastIDLocation=putLocationTableInDictionary(tempTableLocation)
 lastIDDate=putDateTableInDictionary(tempTableDate)
-lastIDResponsibility=putResponsibilityTableInDictionary(tempTableResponsibility) # TODO_A
+lastIDResponsibility=putResponsibilityTableInDictionary(tempTableResponsibility)
 lastIDCallType=putCallTypeTableInDictionary(tempTableCallType) # TODO_B
 
 
@@ -309,12 +332,11 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 idDuration=getDimensionDurationRow(manRow[4], tempTableDurata)
                 idDate=getDimensionDateRow(manRow[2],tempTableDate)
                 idLocation=getDimensionLocationRow(manRow[8],manRow[9],manRow[10],manRow[11],tempTableLocation)
-                idResponsibility=getDimensionResponsibilityRow() # TODO_A
+                idResponsibility=getDimensionResponsibilityRow(manRow[12], manRow[13],manRow[14],tempTableResponsibility)
                 idCallType=getDimensionCallTypeRow() # TODO_B
 
-                if idDuration is not None:
-                    exportFactToCsv(f, manRow, idDuration, idDate, idLocation)
-                    #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
+                exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility)
+                #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
         else:
@@ -323,7 +345,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
     exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
     exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
     exportDimensionLocationToCsv(tempTableLocation,dimLocationCSVPath,lastIDLocation)
-    exportDimensionResponsibilityToCsv()# TODO_A
+    exportDimensionResponsibilityToCsv(tempTableResponsibility,dimResponsibilityCSVPath,lastIDResponsibility)
     exportDimensionCallTypeToCsv()# TODO_B
 
 
@@ -331,7 +353,7 @@ csvToPostgres(dimDurationCSVPath, 'test_dim_duration', cur, conn)
 csvToPostgres(fact_csvPATH,'test_fact',cur,conn)
 csvToPostgres(dimLocationCSVPath,'test_dim_location',cur,conn)
 csvToPostgres(dimDateCSVPath,'test_dim_received_date',cur,conn)
-#csvToPostgres()# TODO_A
+csvToPostgres(dimResponsibilityCSVPath,'test_dim_responsibility',cur,conn)
 #csvToPostgres()# TODO_B
 
 f.close()
