@@ -100,16 +100,49 @@ def rowManipulation(row):
     #Evaluate intervention duration
     d1 = datetime.datetime.strptime(row[6], "%Y-%m-%dT%H:%M:%S")
     d2 = datetime.datetime.strptime(row[10], "%Y-%m-%dT%H:%M:%S")
-    d3 = d2-d1
-    d3 =(int(d3.seconds/60))
+    durationInMinutes = d2-d1
+    durationInMinutes =(int(durationInMinutes.seconds/60))
 
     #convert priority to a known readable format
+
+    call_number=row[0]
+    unit_id=row[1]
+    incident_number=row[2]
+    call_type=row[3]
+    call_date=row[4]
+    watch_date=row[5]
+    received_dtTm=row[6]
+    entry_dtTm=row[7]
+    dispatch_dtTm=row[8]
+    response_dtTm=row[9]
+    on_scene_dtTm=row[10]
+    transport_dtTm=row[11]
+    hospital_dtTm=row[12]
+    call_final_disposition=row[13]
+    available_dtTm=row[14]
+    address=row[15].replace(',','_')
+    city=row[16]
+    zipcode=row[17]
+    battalion=row[18]
+    station_area=row[19]
+    box=row[20]
     origPriorityMapped=mapPriority(row[21])
     callPriorityMapped=mapPriority(row[22])
     finalPriorityMapped=mapPriority(row[23])
+    als_unit=row[24]
+    call_type_group=row[25]
+    number_of_alarms=row[26]
+    unit_type=row[27]
+    unit_sequence_call_dispatch=row[28]
+    fire_prevention_district=row[29]
+    supervisor_district=row[30]
+    neighborhood=row[31]
+    location=row[32]
+    rowid=row[33]
+
 
     #create the fact row
-    manRow=(row[0], row[1], row[6], row[10],d3,"",origPriorityMapped,finalPriorityMapped,row[15].replace(',','_'),row[16],row[17],row[31])
+    manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,"",origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood)
     '''
     for i in range(32):
         print(i,row[i])
