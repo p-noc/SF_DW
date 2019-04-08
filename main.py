@@ -210,7 +210,6 @@ def exportDimensionDateToCsv(dict,path,lastID):
                 elif (dt.month==10) or (dt.month==11) or (dt.month==12):
                     season=4
                 fl.write(repr(v) + "," + k + "," + repr(dt.hour)+ "," + repr(dt.day)+ "," + repr(dt.month)+ "," + repr(dt.year)+ "," + repr(season)+ "\n")
-                print(repr(dt.month)+"_"+repr(season))
     fl.close()
 
 def exportDimensionLocationToCsv(dict, path, lastID):
