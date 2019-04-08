@@ -13,6 +13,8 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_duration (idDuration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
     cur.execute("CREATE TABLE IF NOT EXISTS test_fact(id_date integer, id_duration smallint, id_location smallint, call_num integer NOT NULL,unit_id varchar(20) NOT NULL,onScene_date timestamp without time zone,declared_prior varchar(1),final_prior varchar(1))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location smallint NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
+    # TODO_A cur.execute("CREATE") dim_responsibility
+    # TODO_B cur.execute("CREATE") dim_call_type
 
     conn.commit()
 
@@ -51,6 +53,14 @@ def putDateTableInDictionary(dict):
     else:
         return 0
 
+def putResponsibilityTableInDictionary(dict):
+    # TODO_A
+    return 0
+
+def putCallTypeTableInDictionary(dict):
+    # TODO_B
+    return 0
+
 def getDimensionDurationRow(duration, tempTableDurata):
     if (duration not in tempTableDurata.values()):
         tempTableDurata[len(tempTableDurata)] = duration
@@ -84,6 +94,15 @@ def getDimensionLocationRow(address,city,zipcode,neigh,tempTableLocation):
         if loc == address:
             return idd
     '''
+
+def getDimensionResponsibilityRow():
+    # TODO_A
+    return 0
+
+def getDimensionCallTypeRow():
+    # TODO_B
+    return 0
+
 #convert unknown priority values to known ones (2 non-emergency,3 emergency)
 def mapPriority(priority):
     # Priority levels:
@@ -202,13 +221,13 @@ def exportDimensionDateToCsv(dict,path,lastID):
         for k,v in dict.items():
             if v>=lastID:
                 dt=datetime.datetime.strptime(k,"%Y-%m-%dT%H:%M:%S")
-                if (dt.month==1) or (dt.month==2) or (dt.month==3):
+                if (dt.month==12) or (dt.month==1) or (dt.month==2):
                     season=1
-                elif (dt.month==4) or (dt.month==5) or (dt.month==6):
+                elif (dt.month==3) or (dt.month==4) or (dt.month==5):
                     season=2
-                elif (dt.month==7) or (dt.month==8) or (dt.month==9):
+                elif (dt.month==6) or (dt.month==7) or (dt.month==8):
                     season=3
-                elif (dt.month==10) or (dt.month==11) or (dt.month==12):
+                elif (dt.month==9) or (dt.month==10) or (dt.month==11):
                     season=4
                 fl.write(repr(v) + "," + k + "," + repr(dt.hour)+ "," + repr(dt.day)+ "," + repr(dt.month)+ "," + repr(dt.year)+ "," + repr(season)+ "\n")
     fl.close()
@@ -224,6 +243,13 @@ def exportDimensionLocationToCsv(dict, path, lastID):
                 fl.write(repr(v) + "," + fieldsList[0] + "," + fieldsList[1] + "," + fieldsList[2] + "," + fieldsList[3] + "\n")
     fl.close()
 
+def exportDimensionResponsibilityToCsv():
+    # TODO_A
+    return 0
+
+def exportDimensionCallTypeToCsv():
+    # TODO_B
+    return 0
 
 def exportFactToCsv(f, manRow, idDuration, idDate, idLocation):
         stw = (repr(idDate)+ "," + repr(idDuration) + "," + repr(idLocation) + "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
@@ -241,6 +267,8 @@ inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
 dimLocationCSVPath= Path.cwd() / 'output/dim_location.csv'
+dimResponsibilityCSVPath= Path.cwd() / 'output/dim_responsibility.csv'
+dimCallTypeCSVPath= Path.cwd() / 'output/dim_call_type.csv'
 fact_csvPATH = Path.cwd() / 'output/fact.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
 
 conn = psycopg2.connect(postgresConnectionString)
@@ -252,11 +280,16 @@ createTables(cur,conn)
 tempTableDurata={}
 tempTableLocation={}
 tempTableDate={}
+tempTableResponsibility={}
+tempTableCallType={}
+
 
 # Fill dictionaries and fetch latest id
 lastIDDuration=putDurationTableInDictionary(tempTableDurata)
 lastIDLocation=putLocationTableInDictionary(tempTableLocation)
 lastIDDate=putDateTableInDictionary(tempTableDate)
+lastIDResponsibility=putResponsibilityTableInDictionary(tempTableResponsibility) # TODO_A
+lastIDCallType=putCallTypeTableInDictionary(tempTableCallType) # TODO_B
 
 
 open(fact_csvPATH, 'w').close()
@@ -276,6 +309,8 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 idDuration=getDimensionDurationRow(manRow[4], tempTableDurata)
                 idDate=getDimensionDateRow(manRow[2],tempTableDate)
                 idLocation=getDimensionLocationRow(manRow[8],manRow[9],manRow[10],manRow[11],tempTableLocation)
+                idResponsibility=getDimensionResponsibilityRow() # TODO_A
+                idCallType=getDimensionCallTypeRow() # TODO_B
 
                 if idDuration is not None:
                     exportFactToCsv(f, manRow, idDuration, idDate, idLocation)
@@ -284,15 +319,20 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 cntNotValidRows=cntNotValidRows+1
         else:
             cnt = cnt + 1
+
     exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
     exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
     exportDimensionLocationToCsv(tempTableLocation,dimLocationCSVPath,lastIDLocation)
+    exportDimensionResponsibilityToCsv()# TODO_A
+    exportDimensionCallTypeToCsv()# TODO_B
 
 
 csvToPostgres(dimDurationCSVPath, 'test_dim_duration', cur, conn)
 csvToPostgres(fact_csvPATH,'test_fact',cur,conn)
 csvToPostgres(dimLocationCSVPath,'test_dim_location',cur,conn)
 csvToPostgres(dimDateCSVPath,'test_dim_received_date',cur,conn)
+#csvToPostgres()# TODO_A
+#csvToPostgres()# TODO_B
 
 f.close()
 
