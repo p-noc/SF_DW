@@ -143,9 +143,10 @@ def rowManipulation(row):
 
 
     dictTest=ast.literal_eval(location)
-    #print(dictTest)
     longitude=dictTest.get('longitude')
     latitude=dictTest.get('latitude')
+    lat_lon=latitude+","+longitude;
+
     #create the fact row
     manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,"",origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood)
     '''
