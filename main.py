@@ -7,6 +7,17 @@ import ast
 from pathlib import Path
 import random
 
+
+# TODO +++ IMPORTANTE +++
+# Ci sono problemi nell'inserimento del file python.csv: il file di output viene generato correttamente, ma non inserisce in db
+# C'è da sistemare i repr/nonrepr della scrittura in csv
+# C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ma in generale tutte le date nulle,
+# quando prova ad inserire un valore nullo nel campo data giustamente da errore, per ora ho apparato mettendo un controllo che leva di mezzo la riga
+# Ci sono una serie di TODO sparsi 
+
+
+
+
 cntNotValidRows=0
 cntValidRows=0
 
@@ -19,7 +30,8 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
-    cur.execute("create table if not exists dispatch911_original(call_number smallint,unit_id varchar(10),incident_number varchar(8),call_date timestamp without time zone,call_type varchar(50),watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,AVL_validated_onscene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(20),number_of_alarms smallint,unit_type varchar(10),unit_sequence_in_call_dispatch smallint,location_f point,fire_prevenction_district varchar(5),supervisor_district varchar(20),neighborhood_district varchar(50),rowid varchar(50))")
+    cur.execute("DROP TABLE dispatch911_original")
+    cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50))")
     conn.commit()
 
 def putDurationTableInDictionary(dict):
@@ -105,15 +117,6 @@ def getDimensionLocationRow(address,city,zipcode,neigh,tempTableLocation):
     else:
         return id
 
-    '''
-    if (address not in tempTableLocation.values()):
-        tempTableLocation[len(tempTableLocation)] = [address,city,zipcode,neigh]
-
-    for idd, loc in tempTableLocation.items():
-        if loc == address:
-            return idd
-    '''
-
 def getDimensionResponsibilityRow(box,station_area,battalion,tempTableResponsibility):
     responsibility=box+"@"+station_area+"@"+battalion
     id = tempTableResponsibility.get(responsibility)
@@ -194,15 +197,22 @@ def rowManipulation(row):
 
     call_type=call_type.replace(","," ")
 
+    if als_unit=='True':
+        als_unit=1
+    else:
+        als_unit=0
+
+    number_of_alarms=int(number_of_alarms)
+    unit_sequence_call_dispatch=int(unit_sequence_call_dispatch)
+
     dictTest=ast.literal_eval(location)
     longitude=dictTest.get('longitude')
     latitude=dictTest.get('latitude')
     lat_lon=latitude+","+longitude
 
     #create the fact row
-    manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,0,origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood,box,station_area,battalion,call_type,call_type_group)
+    #manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,0,origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood,box,station_area,battalion,call_type,call_type_group)
 
-    '''
     manRow=(call_number,                    #0
             unit_id,                        #1
             incident_number,                #2
@@ -235,9 +245,10 @@ def rowManipulation(row):
             fire_prevention_district,       #29
             supervisor_district,            #30
             neighborhood,                   #31
-            location,                       #32
-            rowid)                          #33
-    '''
+            latitude,                       #32 #TODO qui ci va il campo Point(lat,lon), modificare anche il tipo della creazione tabella
+            rowid,                          #33
+            durationInMinutes)              #34
+
     '''
     for i in range(35):
         print(i,row[i])
@@ -265,6 +276,22 @@ def rowValidation(row):
     if row[17]=="":     #Colonna 17: zipcode
         return False
     if row[19]=="":     #Colonna 19: station area
+        return False
+    if row[6]=="":     #Colonna ----------
+        return False
+    if row[7]=="":     #Colonna ----------
+        return False
+    if row[8]=="":     #Colonna ----------
+        return False
+    if row[9]=="":     #Colonna ----------
+        return False
+    if row[10]=="":     #Colonna ----------
+        return False
+    if row[11]=="":     #Colonna ----------
+        return False
+    if row[12]=="":     #Colonna ----------
+        return False
+    if row[14]=="":     #Colonna ----------
         return False
     return True
 
@@ -331,12 +358,24 @@ def exportDimensionCallTypeToCsv(dict,path,lastID):
                 fl.write(repr(v)+","+fieldList[0]+","+fieldList[1]+"\n")
     fl.close()
 
-def exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType):
+
+def exportFactToCsv(f, manRow, idDuration, idDate, idLocation, idResponsibility, idCallType):
+    stw = (repr(manRow[0]) + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(
+        manRow[4]) + "," + repr(manRow[5]) + "," + repr(manRow[6]) + "," + repr(manRow[7]) + "," + repr(
+        manRow[8]) + "," + repr(manRow[9]) + "," + repr(manRow[10]) + "," + repr(manRow[11]) + "," + repr(
+        manRow[12]) + "," + repr(manRow[13]) + "," + repr(manRow[14]) + "," + repr(manRow[15]) + "," + repr(
+        manRow[16]) + "," + repr(manRow[17]) + "," + repr(manRow[18]) + "," + repr(manRow[19]) + "," + repr(
+        manRow[20]) + "," + repr(manRow[21]) + "," + repr(manRow[22]) + "," + repr(manRow[23]) + "," + repr(
+        manRow[24]) + "," + repr(manRow[25]) + "," + repr(manRow[26]) + "," + repr(manRow[27]) + "," + repr(
+        manRow[28]) + "," + repr(manRow[29]) + "," + repr(manRow[30]) + "," + repr(manRow[31]) + "," + repr(
+        manRow[32]) + "," + repr(manRow[33]) + "\n")
+    f.write(stw)
+
+
+def exportFactDimToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType):
     stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idLocation) + "," + repr(idResponsibility) + "," + repr(idCallType)+ "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
     f.write(stw)
 
-def exportFactDimToCsv():
-    return 0
 
 def csvToPostgres(csvPath,tablename,cur,conn):
     with open(csvPath, 'r') as f:
@@ -395,11 +434,11 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 cntValidRows=cntValidRows+1
                 manRow = rowManipulation(row)
 
-                idDuration=getDimensionDurationRow(manRow[4], tempTableDurata)
-                idDate=getDimensionDateRow(manRow[2],tempTableDate)
-                idLocation=getDimensionLocationRow(manRow[8],manRow[9],manRow[10],manRow[11],tempTableLocation)
-                idResponsibility=getDimensionResponsibilityRow(manRow[12], manRow[13],manRow[14],tempTableResponsibility)
-                idCallType=getDimensionCallTypeRow(manRow[15],manRow[16],tempTableCallType)
+                idDuration=getDimensionDurationRow(manRow[34], tempTableDurata)
+                idDate=getDimensionDateRow(manRow[6],tempTableDate)
+                idLocation=getDimensionLocationRow(manRow[15],manRow[16],manRow[17],manRow[31],tempTableLocation)
+                idResponsibility=getDimensionResponsibilityRow(manRow[20], manRow[19],manRow[18],tempTableResponsibility)
+                idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
 
                 exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType)
                 #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
@@ -416,7 +455,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
 
 
 csvToPostgres(dimDurationCSVPath, 'test_dim_duration', cur, conn)
-csvToPostgres(fact_csvPATH,'test_fact',cur,conn)
+csvToPostgres(fact_csvPATH,'dispatch911_original',cur,conn)
 csvToPostgres(dimLocationCSVPath,'test_dim_location',cur,conn)
 csvToPostgres(dimDateCSVPath,'test_dim_received_date',cur,conn)
 csvToPostgres(dimResponsibilityCSVPath,'test_dim_responsibility',cur,conn)
@@ -428,31 +467,4 @@ print("Tempo ETL (sec): %s" % (time.time() - start_time))
 print("Righe non valide: %s" % (cntNotValidRows))
 print("Righe valide: %s" % (cntValidRows))
 
-'''
-class ETL_load:
-    def CodeToCSV(self):
-        conn = psycopg2.connect(ETL_load.postgresConnectionString)
-        cur = conn.cursor()
-        with open(ETL_transform.path, 'r') as f:
-            cur.copy_from(f, 'test2_table', sep=',')
-        conn.commit()
-
-class ETL_transform:
-# Classe per processo di trasformazione ETL: si occupa della trasformazione dei dati e
-# dell'esportazione degli stessi in formato csv. L'output sarà utilizzato dalla classe ETL_load.
-    path = r"D:Università\Basi\Progetto\sf-fire-data-incidents-violations-and-more\output.csv"
-
-    def __init__(self):
-        outFile = open(self.path, "w+")
-        outFile.close()
-
-    def expManipulatedRow(self,row):
-        # Apre in append il file in cui sono conservate le righe manipolate
-        with open(self.path, 'a',newline='') as writeFile:
-            writer = csv.writer(writeFile)
-            writer.writerow(row)
-            writeFile.close()
-'''
-
-#SCRIVO la
 #SELECT test2_table.distretto, COUNT(*) AS cnt FROM test2_table GROUP BY test2_table.distretto ORDER BY 2 DESC
