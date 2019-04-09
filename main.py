@@ -122,7 +122,6 @@ def getDimensionResponsibilityRow(box,station_area,battalion,tempTableResponsibi
         return len(tempTableResponsibility)-1
     else:
         return id
-    return 0
 
 def getDimensionCallTypeRow(call_type,call_type_group,tempTableCallType):
     calltype=call_type+"@"+call_type_group
@@ -132,7 +131,6 @@ def getDimensionCallTypeRow(call_type,call_type_group,tempTableCallType):
         return len(tempTableCallType)-1
     else:
         return id
-    return 0
 
 #convert unknown priority values to known ones (2 non-emergency,3 emergency)
 def mapPriority(priority):
@@ -199,12 +197,49 @@ def rowManipulation(row):
     dictTest=ast.literal_eval(location)
     longitude=dictTest.get('longitude')
     latitude=dictTest.get('latitude')
-    lat_lon=latitude+","+longitude;
+    lat_lon=latitude+","+longitude
 
     #create the fact row
     manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,0,origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood,box,station_area,battalion,call_type,call_type_group)
+
     '''
-    for i in range(32):
+    manRow=(call_number,                    #0
+            unit_id,                        #1
+            incident_number,                #2
+            call_type,                      #3
+            call_date,                      #4
+            watch_date,                     #5
+            received_dtTm,                  #6
+            entry_dtTm,                     #7
+            dispatch_dtTm,                  #8
+            response_dtTm,                  #9
+            on_scene_dtTm,                  #10
+            transport_dtTm,                 #11
+            hospital_dtTm,                  #12
+            call_final_disposition,         #13
+            available_dtTm,                 #14
+            address,                        #15
+            city,                           #16
+            zipcode,                        #17
+            battalion,                      #18
+            station_area,                   #19
+            box,                            #20
+            origPriorityMapped,             #21
+            callPriorityMapped,             #22
+            finalPriorityMapped,            #23
+            als_unit,                       #24
+            call_type_group,                #25
+            number_of_alarms,               #26
+            unit_type,                      #27
+            unit_sequence_call_dispatch,    #28
+            fire_prevention_district,       #29
+            supervisor_district,            #30
+            neighborhood,                   #31
+            location,                       #32
+            rowid)                          #33
+    '''
+    '''
+    for i in range(35):
         print(i,row[i])
     print("---")
     '''
@@ -299,6 +334,9 @@ def exportDimensionCallTypeToCsv(dict,path,lastID):
 def exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType):
     stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idLocation) + "," + repr(idResponsibility) + "," + repr(idCallType)+ "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
     f.write(stw)
+
+def exportFactDimToCsv():
+    return 0
 
 def csvToPostgres(csvPath,tablename,cur,conn):
     with open(csvPath, 'r') as f:
