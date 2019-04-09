@@ -18,7 +18,7 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
-
+    cur.execute("create table if not exists dispatch911_original(call_number smallint,unit_id varchar(10),incident_number varchar(8),call_date timestamp without time zone,call_type varchar(50),watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,AVL_validated_onscene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(20),number_of_alarms smallint,unit_type varchar(10),unit_sequence_in_call_dispatch smallint,location_f point,fire_prevenction_district varchar(5),supervisor_district varchar(20),neighborhood_district varchar(50),rowid varchar(50))")
     conn.commit()
 
 def putDurationTableInDictionary(dict):
