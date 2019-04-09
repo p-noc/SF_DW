@@ -6,6 +6,7 @@ import datetime
 import ast
 from pathlib import Path
 import random
+
 cntNotValidRows=0
 cntValidRows=0
 
