@@ -71,6 +71,7 @@ def putResponsibilityTableInDictionary(dictResp):
 def putCallTypeTableInDictionary(dictCallType):
     cur.execute("SELECT * FROM test_dim_call_type")
     queryRes=cur.fetchall()
+    print(queryRes)
     for k in queryRes:
         calltypeString=k[1]+"@"+k[2]
         dictCallType[calltypeString]=k[0]
