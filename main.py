@@ -14,7 +14,7 @@ def createTables(cur,conn):
     #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm')")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_received_date(rec_date_id integer NOT NULL,datetime timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_duration (idDuration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_fact(id_date integer, id_duration smallint, id_location integer,id_responsibility smallint, call_num integer NOT NULL,unit_id varchar(20) NOT NULL,onScene_date timestamp without time zone,declared_prior varchar(1),final_prior varchar(1))")
+    cur.execute("CREATE TABLE IF NOT EXISTS test_fact(id_date integer, id_duration smallint, id_location integer,id_responsibility smallint,id_call_type smallint, call_num integer NOT NULL,unit_id varchar(20) NOT NULL,onScene_date timestamp without time zone,declared_prior varchar(1),final_prior varchar(1))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
@@ -71,7 +71,6 @@ def putResponsibilityTableInDictionary(dictResp):
 def putCallTypeTableInDictionary(dictCallType):
     cur.execute("SELECT * FROM test_dim_call_type")
     queryRes=cur.fetchall()
-    print(queryRes)
     for k in queryRes:
         calltypeString=k[1]+"@"+k[2]
         dictCallType[calltypeString]=k[0]
@@ -119,7 +118,7 @@ def getDimensionResponsibilityRow(box,station_area,battalion,tempTableResponsibi
     id = tempTableResponsibility.get(responsibility)
     if (id is None):
         tempTableResponsibility[responsibility] = len(tempTableResponsibility)
-        return len(tempTableLocation)-1
+        return len(tempTableResponsibility)-1
     else:
         return id
     return 0
@@ -296,8 +295,8 @@ def exportDimensionCallTypeToCsv(dict,path,lastID):
                 fl.write(repr(v)+","+fieldList[0]+","+fieldList[1]+"\n")
     fl.close()
 
-def exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility):
-    stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idLocation) + "," + repr(idResponsibility) + "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
+def exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType):
+    stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idLocation) + "," + repr(idResponsibility) + "," + repr(idCallType)+ "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
     f.write(stw)
 
 def csvToPostgres(csvPath,tablename,cur,conn):
@@ -363,7 +362,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 idResponsibility=getDimensionResponsibilityRow(manRow[12], manRow[13],manRow[14],tempTableResponsibility)
                 idCallType=getDimensionCallTypeRow(manRow[15],manRow[16],tempTableCallType)
 
-                exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility)
+                exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType)
                 #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
