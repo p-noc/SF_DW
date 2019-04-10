@@ -13,10 +13,8 @@ import random
 # C'è da sistemare i repr/nonrepr della scrittura in csv
 # C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ma in generale tutte le date nulle,
 # quando prova ad inserire un valore nullo nel campo data giustamente da errore, per ora ho apparato mettendo un controllo che leva di mezzo la riga
-# Ci sono una serie di TODO sparsi 
-
-
-
+# Ci sono una serie di TODO sparsi
+import sqlalchemy
 
 cntNotValidRows=0
 cntValidRows=0
@@ -30,7 +28,7 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
-    cur.execute("DROP TABLE dispatch911_original")
+    #cur.execute("DROP TABLE dispatch911_original")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50))")
     conn.commit()
 
@@ -210,6 +208,9 @@ def rowManipulation(row):
     latitude=dictTest.get('latitude')
     lat_lon=latitude+","+longitude
 
+
+
+
     #create the fact row
     #manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,0,origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood,box,station_area,battalion,call_type,call_type_group)
 
@@ -359,7 +360,7 @@ def exportDimensionCallTypeToCsv(dict,path,lastID):
     fl.close()
 
 
-def exportFactToCsv(f, manRow, idDuration, idDate, idLocation, idResponsibility, idCallType):
+def exportFactOriginalToCsv(f, manRow):
     stw = (repr(manRow[0]) + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(
         manRow[4]) + "," + repr(manRow[5]) + "," + repr(manRow[6]) + "," + repr(manRow[7]) + "," + repr(
         manRow[8]) + "," + repr(manRow[9]) + "," + repr(manRow[10]) + "," + repr(manRow[11]) + "," + repr(
@@ -379,13 +380,16 @@ def exportFactDimToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibilit
 
 def csvToPostgres(csvPath,tablename,cur,conn):
     with open(csvPath, 'r') as f:
-        cur.copy_from(f, tablename, sep=',')
-        conn.commit()
+        try:
+            cur.copy_from(f, tablename, sep=',',null='None')
+        except psycopg2.OperationalError as e:
+            print(e)
+
 
 
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
-inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv' #r"\datasource\testPython.csv"
-#inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
+#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv' #r"\datasource\testPython.csv"
+inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
 dimLocationCSVPath= Path.cwd() / 'output/dim_location.csv'
@@ -440,13 +444,13 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 idResponsibility=getDimensionResponsibilityRow(manRow[20], manRow[19],manRow[18],tempTableResponsibility)
                 idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
 
-                exportFactToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType)
+                exportFactOriginalToCsv(f, manRow)
                 #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
         else:
             cnt = cnt + 1
-
+    f.close()
     exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
     exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
     exportDimensionLocationToCsv(tempTableLocation,dimLocationCSVPath,lastIDLocation)
@@ -455,13 +459,28 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
 
 
 csvToPostgres(dimDurationCSVPath, 'test_dim_duration', cur, conn)
-csvToPostgres(fact_csvPATH,'dispatch911_original',cur,conn)
 csvToPostgres(dimLocationCSVPath,'test_dim_location',cur,conn)
 csvToPostgres(dimDateCSVPath,'test_dim_received_date',cur,conn)
 csvToPostgres(dimResponsibilityCSVPath,'test_dim_responsibility',cur,conn)
 csvToPostgres(dimCallTypeCSVPath,'test_dim_call_type',cur,conn)
+csvToPostgres(fact_csvPATH, 'dispatch911_original', cur, conn)
+'''
+import pandas as pd
+df = pd.read_csv(fact_csvPATH)
+df.columns = [c.lower() for c in df.columns] #postgres doesn't like capitals or spaces
+# Set is so the raw sql output is logged
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+from sqlalchemy import create_engine
+engine = create_engine('postgresql://postgres:1234@localhost:5432/test')
 
-f.close()
+df.to_sql("dispatch911_original",engine,if_exists="append",index=False)
+'''
+
+conn.commit()
+
+#f.close()
 
 print("Tempo ETL (sec): %s" % (time.time() - start_time))
 print("Righe non valide: %s" % (cntNotValidRows))
