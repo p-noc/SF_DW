@@ -8,13 +8,10 @@ from pathlib import Path
 import random
 
 
-# TODO +++ IMPORTANTE +++
-# Ci sono problemi nell'inserimento del file python.csv: il file di output viene generato correttamente, ma non inserisce in db
-# C'è da sistemare i repr/nonrepr della scrittura in csv
-# C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ma in generale tutte le date nulle,
-# quando prova ad inserire un valore nullo nel campo data giustamente da errore, per ora ho apparato mettendo un controllo che leva di mezzo la riga
-# Ci sono una serie di TODO sparsi
-import sqlalchemy
+# TODO aggiungere fatto con id dimensioni
+# C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ma in generale tutte le date nulle TODO
+# quando prova ad inserire un valore nullo nel campo data giustamente da errore, per ora ho apparato mettendo un controllo che leva di mezzo la riga -> CHECK se ora va TODO
+
 
 cntNotValidRows=0
 cntValidRows=0
@@ -29,7 +26,7 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
     cur.execute("CREATE TABLE IF NOT EXISTS test_dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
     #cur.execute("DROP TABLE dispatch911_original")
-    cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50))")
+    cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)")
     conn.commit()
 
 def putDurationTableInDictionary(dict):
@@ -209,8 +206,6 @@ def rowManipulation(row):
     lat_lon=latitude+","+longitude
 
 
-
-
     #create the fact row
     #manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,0,origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood,box,station_area,battalion,call_type,call_type_group)
 
@@ -257,6 +252,7 @@ def rowManipulation(row):
     '''
     return manRow
 
+
 def rowValidation(row):
     if row[31]=="None": #Colonna 31: distretto di SF, non può essere None
         return False
@@ -278,22 +274,22 @@ def rowValidation(row):
         return False
     if row[19]=="":     #Colonna 19: station area
         return False
-    if row[6]=="":     #Colonna ----------
-        return False
+    if row[6]=="":     #Colonna DATE X
+        row[6]= 'None'
     if row[7]=="":     #Colonna ----------
-        return False
+        row[7] = 'None'
     if row[8]=="":     #Colonna ----------
-        return False
+        row[8]= 'None'
     if row[9]=="":     #Colonna ----------
-        return False
+        row[9]= 'None'
     if row[10]=="":     #Colonna ----------
-        return False
+        row[10]= 'None'
     if row[11]=="":     #Colonna ----------
-        return False
+        row[11]= 'None'
     if row[12]=="":     #Colonna ----------
-        return False
+        row[12]= 'None'
     if row[14]=="":     #Colonna ----------
-        return False
+        row[14] = 'None'
     return True
 
 def exportDimensionDurataToCsv(dict, path, lastID):
@@ -361,17 +357,21 @@ def exportDimensionCallTypeToCsv(dict,path,lastID):
 
 
 def exportFactOriginalToCsv(f, manRow):
-    stw = (repr(manRow[0]) + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[3]) + "," + repr(
+    '''
+    print(manRow)
+    stw = ((manRow[0]) + "," + (manRow[1]) + "," + (manRow[2]) + "," + (manRow[3]) + "," + repr(
         manRow[4]) + "," + repr(manRow[5]) + "," + repr(manRow[6]) + "," + repr(manRow[7]) + "," + repr(
         manRow[8]) + "," + repr(manRow[9]) + "," + repr(manRow[10]) + "," + repr(manRow[11]) + "," + repr(
-        manRow[12]) + "," + repr(manRow[13]) + "," + repr(manRow[14]) + "," + repr(manRow[15]) + "," + repr(
-        manRow[16]) + "," + repr(manRow[17]) + "," + repr(manRow[18]) + "," + repr(manRow[19]) + "," + repr(
-        manRow[20]) + "," + repr(manRow[21]) + "," + repr(manRow[22]) + "," + repr(manRow[23]) + "," + repr(
-        manRow[24]) + "," + repr(manRow[25]) + "," + repr(manRow[26]) + "," + repr(manRow[27]) + "," + repr(
-        manRow[28]) + "," + repr(manRow[29]) + "," + repr(manRow[30]) + "," + repr(manRow[31]) + "," + repr(
+        manRow[12]) + "," + (manRow[13]) + "," + repr(manRow[14]) + "," + (manRow[15]) + "," + (
+        manRow[16]) + "," + (manRow[17]) + "," + (manRow[18]) + "," + (manRow[19]) + "," + (
+        manRow[20]) + "," + (manRow[21]) + "," + (manRow[22]) + "," + (manRow[23]) + "," + repr(
+        manRow[24]) + "," + (manRow[25]) + "," + repr(manRow[26]) + "," + (manRow[27]) + "," + repr(
+        manRow[28]) + "," + (manRow[29]) + "," + (manRow[30]) + "," + (manRow[31]) + "," + repr(
         manRow[32]) + "," + repr(manRow[33]) + "\n")
     f.write(stw)
-
+    '''
+    writer = csv.writer(f,lineterminator='\n')
+    writer.writerow(manRow)
 
 def exportFactDimToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType):
     stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idLocation) + "," + repr(idResponsibility) + "," + repr(idCallType)+ "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
@@ -388,8 +388,8 @@ def csvToPostgres(csvPath,tablename,cur,conn):
 
 
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
-#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv' #r"\datasource\testPython.csv"
-inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
+inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv' #r"\datasource\testPython.csv"
+#inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
 dimLocationCSVPath= Path.cwd() / 'output/dim_location.csv'
