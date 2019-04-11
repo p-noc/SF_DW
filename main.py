@@ -8,10 +8,9 @@ from pathlib import Path
 import random
 
 
-# TODO aggiungere fatto con id dimensioni
-# C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ma in generale tutte le date nulle TODO
-# quando prova ad inserire un valore nullo nel campo data giustamente da errore, per ora ho apparato mettendo un controllo che leva di mezzo la riga -> CHECK se ora va TODO
-
+#TODO popolare fatto con id dimensioni
+#TODO C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ipotesi: per le date importanti settare data arrivo chiamata+random offset
+#TODO location -> lat,lon point
 
 cntNotValidRows=0
 cntValidRows=0
@@ -19,18 +18,18 @@ cntValidRows=0
 def createTables(cur,conn):
     #cur.execute("CREATE TYPE enum_call_type AS ENUM ('Administrative','Aircraft Emergency','Alarms','Assist Police','Citizen Assist / Service Call','Confined Space / Structure Collapse','Electrical Hazard','Elevator / Escalator Rescue','Explosion','Extrication / Entrapped (Machinery  Vehicle)','Fuel Spill','Gas Leak (Natural and LP Gases)','HazMat','High Angle Rescue','Industrial Accidents','Lightning Strike (Investigation)','Marine Fire','Medical Incident','Mutual Aid / Assist Outside Agency','Odor (Strange / Unknown)','Oil Spill','Other','Outside Fire','Smoke Investigation (Outside)','Structure Fire','Suspicious Package','Traffic Collision','Train / Rail Fire','Train / Rail Incident','Transfer','Vehicle Fire','Water Rescue','Watercraft in Distress')")
     #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm')")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_received_date(rec_date_id integer NOT NULL,datetime timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_duration (idDuration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_fact(id_date integer, id_duration smallint, id_location integer,id_responsibility smallint,id_call_type smallint, call_num integer NOT NULL,unit_id varchar(20) NOT NULL,onScene_date timestamp without time zone,declared_prior varchar(1),final_prior varchar(1))")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_location(rec_date_location Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
-    cur.execute("CREATE TABLE IF NOT EXISTS test_dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
+    cur.execute("CREATE TABLE IF NOT EXISTS dim_received_date(id_received_date integer NOT NULL,received_DtTm timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
+    cur.execute("CREATE TABLE IF NOT EXISTS dim_duration (id_duration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
+    cur.execute("CREATE TABLE IF NOT EXISTS dim_geo_place(id_geo_place Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
+    cur.execute("CREATE TABLE IF NOT EXISTS dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
+    cur.execute("CREATE TABLE IF NOT EXISTS dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
     #cur.execute("DROP TABLE dispatch911_original")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)")
+    cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_dimensions(id_received_date integer,id_geo_place integer,id_duration smallint,id_responsibility integer,id_call_type smallint,call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_date timestamp without time zone, watch_date timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),location_f point,rowid varchar(50))")
     conn.commit()
 
 def putDurationTableInDictionary(dict):
-    cur.execute("SELECT test_dim_duration.idDuration, test_dim_duration.minutes FROM test_dim_duration")
+    cur.execute("SELECT dim_duration.id_duration, dim_duration.minutes FROM dim_duration")
     queryRes=cur.fetchall()
     for k in queryRes:
         dict[k[0]]=k[1]
@@ -39,13 +38,13 @@ def putDurationTableInDictionary(dict):
     else:
         return 0
 
-def putLocationTableInDictionary(dictLoc):
-    cur.execute("SELECT * FROM test_dim_location")
+def putGeoPlaceTableInDictionary(dictLoc):
+    cur.execute("SELECT * FROM dim_geo_place")
     queryRes=cur.fetchall()
 
     for k in queryRes:
-        locationString=k[1]+"@"+k[2]+"@"+str(k[3])+"@"+k[4]
-        dictLoc[locationString]=k[0]
+        geoPlaceString=k[1]+"@"+k[2]+"@"+str(k[3])+"@"+k[4]
+        dictLoc[geoPlaceString]=k[0]
     if len(queryRes)>0:
         return queryRes[len(queryRes)-1][0]
     else:
@@ -53,7 +52,7 @@ def putLocationTableInDictionary(dictLoc):
 
 
 def putDateTableInDictionary(dict):
-    cur.execute("SELECT test_dim_received_date.rec_date_id, test_dim_received_date.datetime FROM test_dim_received_date")
+    cur.execute("SELECT id_received_date, received_DtTm FROM dim_received_date")
     queryRes=cur.fetchall()
 
     for k,j in queryRes:
@@ -65,7 +64,7 @@ def putDateTableInDictionary(dict):
         return 0
 
 def putResponsibilityTableInDictionary(dictResp):
-    cur.execute("SELECT * FROM test_dim_responsibility")
+    cur.execute("SELECT * FROM dim_responsibility")
     queryRes=cur.fetchall()
     for k in queryRes:
         responsString=k[1]+"@"+k[2]+"@"+(k[3])
@@ -77,7 +76,7 @@ def putResponsibilityTableInDictionary(dictResp):
 
 
 def putCallTypeTableInDictionary(dictCallType):
-    cur.execute("SELECT * FROM test_dim_call_type")
+    cur.execute("SELECT * FROM dim_call_type")
     queryRes=cur.fetchall()
     for k in queryRes:
         calltypeString=k[1]+"@"+k[2]
@@ -103,12 +102,12 @@ def getDimensionDateRow(recDate,tempTableDate):
     else:
         return res
 
-def getDimensionLocationRow(address,city,zipcode,neigh,tempTableLocation):
+def getDimensionGeoPlaceRow(address, city, zipcode, neigh, tempTableGeoPlace):
     dimensionString=address + "@" + city + "@" + zipcode + "@" + neigh
-    id=tempTableLocation.get(dimensionString)
+    id=tempTableGeoPlace.get(dimensionString)
     if (id is None):
-        tempTableLocation[dimensionString] = len(tempTableLocation)
-        return len(tempTableLocation)-1
+        tempTableGeoPlace[dimensionString] = len(tempTableGeoPlace)
+        return len(tempTableGeoPlace) - 1
     else:
         return id
 
@@ -307,8 +306,6 @@ def exportDimensionDurataToCsv(dict, path, lastID):
                 if (v<=25):
                     dimRow[4] = 1
 
-                #cur.execute("INSERT INTO test_dim_durata VALUES (%s, %s, %s, %s, %s, %s, %s)", (dimRow[0], dimRow[1], dimRow[2], dimRow[3], dimRow[4], dimRow[5], ))
-
                 fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
     fl.close()
 
@@ -328,7 +325,7 @@ def exportDimensionDateToCsv(dict,path,lastID):
                 fl.write(repr(v) + "," + k + "," + repr(dt.hour)+ "," + repr(dt.day)+ "," + repr(dt.month)+ "," + repr(dt.year)+ "," + repr(season)+ "\n")
     fl.close()
 
-def exportDimensionLocationToCsv(dict, path, lastID):
+def exportDimensionGeoPlaceToCsv(dict, path, lastID):
     # lastID: è l'ultimo id inserito prima delle operazioni di aggiornamento
     #tokenize value string
 
@@ -373,8 +370,8 @@ def exportFactOriginalToCsv(f, manRow):
     writer = csv.writer(f,lineterminator='\n')
     writer.writerow(manRow)
 
-def exportFactDimToCsv(f, manRow, idDuration, idDate, idLocation,idResponsibility,idCallType):
-    stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idLocation) + "," + repr(idResponsibility) + "," + repr(idCallType)+ "," + manRow[0] + "," + repr(manRow[1])+ "," + repr(manRow[3])+ "," +  repr(manRow[6])+ "," +  repr(manRow[7])+"\n" )
+def exportFactDimToCsv(f, manRow, idDuration, idDate, idGeoPlace, idResponsibility, idCallType):
+    stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idGeoPlace) + "," + repr(idResponsibility) + "," + repr(idCallType) + "," + manRow[0] + "," + repr(manRow[1]) + "," + repr(manRow[3]) + "," + repr(manRow[6]) + "," + repr(manRow[7]) + "\n")
     f.write(stw)
 
 
@@ -392,7 +389,7 @@ inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1
 #inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
-dimLocationCSVPath= Path.cwd() / 'output/dim_location.csv'
+dimGeoPlaceCSVPath= Path.cwd() / 'output/dim_geo_place.csv'
 dimResponsibilityCSVPath= Path.cwd() / 'output/dim_responsibility.csv'
 dimCallTypeCSVPath= Path.cwd() / 'output/dim_call_type.csv'
 fact_csvPATH = Path.cwd() / 'output/fact.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
@@ -410,7 +407,7 @@ callTypeGroupDictionary={
                             3:'Alarm'
     }
 tempTableDurata={}
-tempTableLocation={}
+tempTableGeoPlace={}
 tempTableDate={}
 tempTableResponsibility={}
 tempTableCallType={}
@@ -418,7 +415,7 @@ tempTableCallType={}
 
 # Fill dictionaries and fetch latest id
 lastIDDuration=putDurationTableInDictionary(tempTableDurata)
-lastIDLocation=putLocationTableInDictionary(tempTableLocation)
+lastIDGeoPlace=putGeoPlaceTableInDictionary(tempTableGeoPlace)
 lastIDDate=putDateTableInDictionary(tempTableDate)
 lastIDResponsibility=putResponsibilityTableInDictionary(tempTableResponsibility)
 lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
@@ -440,12 +437,12 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
 
                 idDuration=getDimensionDurationRow(manRow[34], tempTableDurata)
                 idDate=getDimensionDateRow(manRow[6],tempTableDate)
-                idLocation=getDimensionLocationRow(manRow[15],manRow[16],manRow[17],manRow[31],tempTableLocation)
+                idGeoPlace=getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31], tempTableGeoPlace)
                 idResponsibility=getDimensionResponsibilityRow(manRow[20], manRow[19],manRow[18],tempTableResponsibility)
                 idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
 
                 exportFactOriginalToCsv(f, manRow)
-                #cur.execute("INSERT INTO test_fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
+                #cur.execute("INSERT INTO fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
         else:
@@ -453,16 +450,16 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
     f.close()
     exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
     exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
-    exportDimensionLocationToCsv(tempTableLocation,dimLocationCSVPath,lastIDLocation)
+    exportDimensionGeoPlaceToCsv(tempTableGeoPlace, dimGeoPlaceCSVPath, lastIDGeoPlace)
     exportDimensionResponsibilityToCsv(tempTableResponsibility,dimResponsibilityCSVPath,lastIDResponsibility)
     exportDimensionCallTypeToCsv(tempTableCallType,dimCallTypeCSVPath,lastIDCallType)
 
 
-csvToPostgres(dimDurationCSVPath, 'test_dim_duration', cur, conn)
-csvToPostgres(dimLocationCSVPath,'test_dim_location',cur,conn)
-csvToPostgres(dimDateCSVPath,'test_dim_received_date',cur,conn)
-csvToPostgres(dimResponsibilityCSVPath,'test_dim_responsibility',cur,conn)
-csvToPostgres(dimCallTypeCSVPath,'test_dim_call_type',cur,conn)
+csvToPostgres(dimDurationCSVPath, 'dim_duration', cur, conn)
+csvToPostgres(dimGeoPlaceCSVPath, 'dim_geo_place', cur, conn)
+csvToPostgres(dimDateCSVPath,'dim_received_date',cur,conn)
+csvToPostgres(dimResponsibilityCSVPath,'dim_responsibility',cur,conn)
+csvToPostgres(dimCallTypeCSVPath,'dim_call_type',cur,conn)
 csvToPostgres(fact_csvPATH, 'dispatch911_original', cur, conn)
 '''
 import pandas as pd
