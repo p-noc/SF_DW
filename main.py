@@ -202,7 +202,7 @@ def rowManipulation(row):
     dictTest=ast.literal_eval(location)
     longitude=dictTest.get('longitude')
     latitude=dictTest.get('latitude')
-    lat_lon=latitude+","+longitude
+    lat_lon='('+latitude+","+longitude+')'
 
 
     #create the fact row
@@ -240,7 +240,7 @@ def rowManipulation(row):
             fire_prevention_district,       #29
             supervisor_district,            #30
             neighborhood,                   #31
-            latitude,                       #32 #TODO qui ci va il campo Point(lat,lon), modificare anche il tipo della creazione tabella
+            lat_lon,                        #32 #TODO qui ci va il campo Point(lat,lon), modificare anche il tipo della creazione tabella
             rowid,                          #33
             durationInMinutes)              #34
 
@@ -306,7 +306,7 @@ def exportDimensionDurataToCsv(dict, path, lastID):
                 if (v<=25):
                     dimRow[4] = 1
 
-                fl.write(repr(dimRow[0]) + "," +  repr(dimRow[1]) + "," + repr(dimRow[2]) + "," + repr(dimRow[3]) + "," + repr(dimRow[4]) + "," +  repr(dimRow[5]) +"\n")
+                fl.write(repr(dimRow[0]) + ";" +  repr(dimRow[1]) + ";" + repr(dimRow[2]) + ";" + repr(dimRow[3]) + ";" + repr(dimRow[4]) + ";" +  repr(dimRow[5]) +"\n")
     fl.close()
 
 def exportDimensionDateToCsv(dict,path,lastID):
@@ -322,7 +322,7 @@ def exportDimensionDateToCsv(dict,path,lastID):
                     season=3
                 elif (dt.month==9) or (dt.month==10) or (dt.month==11):
                     season=4
-                fl.write(repr(v) + "," + k + "," + repr(dt.hour)+ "," + repr(dt.day)+ "," + repr(dt.month)+ "," + repr(dt.year)+ "," + repr(season)+ "\n")
+                fl.write(repr(v) + ";" + k + ";" + repr(dt.hour)+ ";" + repr(dt.day)+ ";" + repr(dt.month)+ ";" + repr(dt.year)+ ";" + repr(season)+ "\n")
     fl.close()
 
 def exportDimensionGeoPlaceToCsv(dict, path, lastID):
@@ -333,7 +333,7 @@ def exportDimensionGeoPlaceToCsv(dict, path, lastID):
         for k, v in dict.items():
             if v >=lastID:
                 fieldsList=k.split("@")
-                fl.write(repr(v) + "," + fieldsList[0] + "," + fieldsList[1] + "," + fieldsList[2] + "," + fieldsList[3] + "\n")
+                fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2] + ";" + fieldsList[3] + "\n")
     fl.close()
 
 def exportDimensionResponsibilityToCsv(dict,path,lastID):
@@ -341,7 +341,7 @@ def exportDimensionResponsibilityToCsv(dict,path,lastID):
         for k, v in dict.items():
             if v >= lastID:
                 fieldsList = k.split("@")
-                fl.write(repr(v) + "," + fieldsList[0] + "," + fieldsList[1] + "," + fieldsList[2]+ "\n")
+                fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2]+ "\n")
     fl.close()
 
 def exportDimensionCallTypeToCsv(dict,path,lastID):
@@ -349,39 +349,39 @@ def exportDimensionCallTypeToCsv(dict,path,lastID):
         for k, v in dict.items():
             if v >= lastID:
                 fieldList=k.split("@")
-                fl.write(repr(v)+","+fieldList[0]+","+fieldList[1]+"\n")
+                fl.write(repr(v)+";"+fieldList[0]+";"+fieldList[1]+"\n")
     fl.close()
 
 
 def exportFactOriginalToCsv(f, manRow):
     '''
     print(manRow)
-    stw = ((manRow[0]) + "," + (manRow[1]) + "," + (manRow[2]) + "," + (manRow[3]) + "," + repr(
-        manRow[4]) + "," + repr(manRow[5]) + "," + repr(manRow[6]) + "," + repr(manRow[7]) + "," + repr(
-        manRow[8]) + "," + repr(manRow[9]) + "," + repr(manRow[10]) + "," + repr(manRow[11]) + "," + repr(
-        manRow[12]) + "," + (manRow[13]) + "," + repr(manRow[14]) + "," + (manRow[15]) + "," + (
-        manRow[16]) + "," + (manRow[17]) + "," + (manRow[18]) + "," + (manRow[19]) + "," + (
-        manRow[20]) + "," + (manRow[21]) + "," + (manRow[22]) + "," + (manRow[23]) + "," + repr(
-        manRow[24]) + "," + (manRow[25]) + "," + repr(manRow[26]) + "," + (manRow[27]) + "," + repr(
-        manRow[28]) + "," + (manRow[29]) + "," + (manRow[30]) + "," + (manRow[31]) + "," + repr(
-        manRow[32]) + "," + repr(manRow[33]) + "\n")
+    stw = ((manRow[0]) + ";" + (manRow[1]) + ";" + (manRow[2]) + ";" + (manRow[3]) + ";" + repr(
+        manRow[4]) + ";" + repr(manRow[5]) + ";" + repr(manRow[6]) + ";" + repr(manRow[7]) + ";" + repr(
+        manRow[8]) + ";" + repr(manRow[9]) + ";" + repr(manRow[10]) + ";" + repr(manRow[11]) + ";" + repr(
+        manRow[12]) + ";" + (manRow[13]) + ";" + repr(manRow[14]) + ";" + (manRow[15]) + ";" + (
+        manRow[16]) + ";" + (manRow[17]) + ";" + (manRow[18]) + ";" + (manRow[19]) + ";" + (
+        manRow[20]) + ";" + (manRow[21]) + ";" + (manRow[22]) + ";" + (manRow[23]) + ";" + repr(
+        manRow[24]) + ";" + (manRow[25]) + ";" + repr(manRow[26]) + ";" + (manRow[27]) + ";" + repr(
+        manRow[28]) + ";" + (manRow[29]) + ";" + (manRow[30]) + ";" + (manRow[31]) + ";" + repr(
+        manRow[32]) + ";" + repr(manRow[33]) + "\n")
     f.write(stw)
     '''
-    writer = csv.writer(f,lineterminator='\n')
+    writer = csv.writer(f,lineterminator='\n', delimiter=';')
     writer.writerow(manRow)
 
 def exportFactDimToCsv(f, manRow, idDuration, idDate, idGeoPlace, idResponsibility, idCallType):
-    #stw = (repr(idDate) + "," + repr(idGeoPlace) + "," + repr(idDuration) + "," + repr(idResponsibility) + "," + repr(idCallType) + "," + manRow[0] + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[4]) + "," + repr(manRow[5]) +  "," + repr(manRow[5]) +  "," + repr(manRow[7]) + "," + repr(manRow[8])+"," + repr(manRow[9]) +"," + repr(manRow[10]) +"," + repr(manRow[12]) +"," + repr(manRow[11]) +"," + repr(manRow[13]) +"," + repr(manRow[14]) +"," + repr(manRow[21]) +"," + repr(manRow[22]) +"," + repr(manRow[23]) +"," + repr(manRow[24]) +"," + repr(manRow[26]) +"," + repr(manRow[27]) +"," + repr(manRow[28]) +"," + repr(manRow[29]) +"," + repr(manRow[30]) +"," + repr(manRow[32]) +"," + repr(manRow[33]) +"\n")
+    #stw = (repr(idDate) + ";" + repr(idGeoPlace) + ";" + repr(idDuration) + ";" + repr(idResponsibility) + ";" + repr(idCallType) + ";" + manRow[0] + ";" + repr(manRow[1]) + ";" + repr(manRow[2]) + ";" + repr(manRow[4]) + ";" + repr(manRow[5]) +  ";" + repr(manRow[5]) +  ";" + repr(manRow[7]) + ";" + repr(manRow[8])+";" + repr(manRow[9]) +";" + repr(manRow[10]) +";" + repr(manRow[12]) +";" + repr(manRow[11]) +";" + repr(manRow[13]) +";" + repr(manRow[14]) +";" + repr(manRow[21]) +";" + repr(manRow[22]) +";" + repr(manRow[23]) +";" + repr(manRow[24]) +";" + repr(manRow[26]) +";" + repr(manRow[27]) +";" + repr(manRow[28]) +";" + repr(manRow[29]) +";" + repr(manRow[30]) +";" + repr(manRow[32]) +";" + repr(manRow[33]) +"\n")
     stw = [(idDate),(idGeoPlace),(idDuration),(idResponsibility),(idCallType),manRow[0],(manRow[1]),(manRow[2]),(manRow[4]),(manRow[5]),(manRow[7]),(manRow[8]), (manRow[9]) , (manRow[10]) , (manRow[11]) , (manRow[12]) , (manRow[13]) , (manRow[14]) , (manRow[21]) , (manRow[22]) , (manRow[23]) , (manRow[24]) , (manRow[26]) , (manRow[27]) , (manRow[28]) , (manRow[29]) , (manRow[30]) , (manRow[32]) , (manRow[33])]
 
-    writer = csv.writer(f,lineterminator='\n')
+    writer = csv.writer(f,lineterminator='\n', delimiter=';')
     writer.writerow(stw)
 
 
 def csvToPostgres(csvPath,tablename,cur,conn):
     with open(csvPath, 'r') as f:
         try:
-            cur.copy_from(f, tablename, sep=',',null='None')
+            cur.copy_from(f, tablename, sep=';',null='None')
         except psycopg2.OperationalError as e:
             print(e)
 
