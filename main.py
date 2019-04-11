@@ -371,8 +371,11 @@ def exportFactOriginalToCsv(f, manRow):
     writer.writerow(manRow)
 
 def exportFactDimToCsv(f, manRow, idDuration, idDate, idGeoPlace, idResponsibility, idCallType):
-    stw = (repr(idDate) + "," + repr(idDuration) + "," + repr(idGeoPlace) + "," + repr(idResponsibility) + "," + repr(idCallType) + "," + manRow[0] + "," + repr(manRow[1]) + "," + repr(manRow[3]) + "," + repr(manRow[6]) + "," + repr(manRow[7]) + "\n")
-    f.write(stw)
+    #stw = (repr(idDate) + "," + repr(idGeoPlace) + "," + repr(idDuration) + "," + repr(idResponsibility) + "," + repr(idCallType) + "," + manRow[0] + "," + repr(manRow[1]) + "," + repr(manRow[2]) + "," + repr(manRow[4]) + "," + repr(manRow[5]) +  "," + repr(manRow[5]) +  "," + repr(manRow[7]) + "," + repr(manRow[8])+"," + repr(manRow[9]) +"," + repr(manRow[10]) +"," + repr(manRow[12]) +"," + repr(manRow[11]) +"," + repr(manRow[13]) +"," + repr(manRow[14]) +"," + repr(manRow[21]) +"," + repr(manRow[22]) +"," + repr(manRow[23]) +"," + repr(manRow[24]) +"," + repr(manRow[26]) +"," + repr(manRow[27]) +"," + repr(manRow[28]) +"," + repr(manRow[29]) +"," + repr(manRow[30]) +"," + repr(manRow[32]) +"," + repr(manRow[33]) +"\n")
+    stw = [(idDate),(idGeoPlace),(idDuration),(idResponsibility),(idCallType),manRow[0],(manRow[1]),(manRow[2]),(manRow[4]),(manRow[5]),(manRow[7]),(manRow[8]), (manRow[9]) , (manRow[10]) , (manRow[11]) , (manRow[12]) , (manRow[13]) , (manRow[14]) , (manRow[21]) , (manRow[22]) , (manRow[23]) , (manRow[24]) , (manRow[26]) , (manRow[27]) , (manRow[28]) , (manRow[29]) , (manRow[30]) , (manRow[32]) , (manRow[33])]
+
+    writer = csv.writer(f,lineterminator='\n')
+    writer.writerow(stw)
 
 
 def csvToPostgres(csvPath,tablename,cur,conn):
@@ -392,7 +395,8 @@ dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
 dimGeoPlaceCSVPath= Path.cwd() / 'output/dim_geo_place.csv'
 dimResponsibilityCSVPath= Path.cwd() / 'output/dim_responsibility.csv'
 dimCallTypeCSVPath= Path.cwd() / 'output/dim_call_type.csv'
-fact_csvPATH = Path.cwd() / 'output/fact.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
+factOriginal_csvPATH = Path.cwd() / 'output/factOriginal.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
+factDimensions_csvPATH = Path.cwd() / 'output/factDimensions.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
 
 conn = psycopg2.connect(postgresConnectionString)
 cur = conn.cursor()
@@ -421,8 +425,10 @@ lastIDResponsibility=putResponsibilityTableInDictionary(tempTableResponsibility)
 lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 
 
-open(fact_csvPATH, 'w').close()
-f=open(fact_csvPATH, 'a', newline='')
+open(factOriginal_csvPATH, 'w').close()
+f=open(factOriginal_csvPATH, 'a', newline='')
+open(factDimensions_csvPATH, 'w').close()
+g=open(factDimensions_csvPATH, 'a', newline='')
 
 start_time = time.time()
 with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
@@ -442,6 +448,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
 
                 exportFactOriginalToCsv(f, manRow)
+                exportFactDimToCsv(g,manRow,idDuration,idDate,idGeoPlace,idResponsibility,idCallType)
                 #cur.execute("INSERT INTO fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
@@ -460,7 +467,9 @@ csvToPostgres(dimGeoPlaceCSVPath, 'dim_geo_place', cur, conn)
 csvToPostgres(dimDateCSVPath,'dim_received_date',cur,conn)
 csvToPostgres(dimResponsibilityCSVPath,'dim_responsibility',cur,conn)
 csvToPostgres(dimCallTypeCSVPath,'dim_call_type',cur,conn)
-csvToPostgres(fact_csvPATH, 'dispatch911_original', cur, conn)
+csvToPostgres(factOriginal_csvPATH, 'dispatch911_original', cur, conn)
+csvToPostgres(factDimensions_csvPATH, 'dispatch911_dimensions', cur, conn)
+
 '''
 import pandas as pd
 df = pd.read_csv(fact_csvPATH)
