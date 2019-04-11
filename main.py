@@ -252,7 +252,7 @@ def rowManipulation(row):
     return manRow
 
 
-def rowValidation(row):
+def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio address ...
     if row[31]=="None": #Colonna 31: distretto di SF, non può essere None
         return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
@@ -261,10 +261,14 @@ def rowValidation(row):
         return False
     if row[23]=="":     #Colonna 23: priorità finale, non può essere nulla
         return False
-    if row[10]=="":     #Colonna 10: data intervento
+    if row[6]=="":     #Colonna DATA chiamata, se assente usa data corrente come placeholder
+        row[6]= datetime.datetime.strftime(datetime.now(), "%Y-%m-%dT%H:%M:%S")
+    if row[10]=="" or (row[10]==row[6] and row[6!=""])or row[10]<row[6]:     #Colonna 10: data intervento, genera data con un ritardo in minuti casuale per la data d'arrivo sul sito se assente o invalida
         row[10]=row[6]
-    if row[10]<row[6]:  #Colonna 6: data arrivo, controlla che le date non siano in conflitto
-        return False
+        onSiteDate=datetime.datetime.strptime(row[10], "%Y-%m-%dT%H:%M:%S")
+        minutesOffset=random.randint(10,40)
+        onSiteDate=onSiteDate+datetime.timedelta(minutes=minutesOffset)
+        row[10]=datetime.datetime.strftime(onSiteDate, "%Y-%m-%dT%H:%M:%S")
     if row[15]== "":    #Colonna 15: address
         return False
     if row[16]=="":     #Colonna 16: city
@@ -273,9 +277,7 @@ def rowValidation(row):
         return False
     if row[19]=="":     #Colonna 19: station area
         return False
-    if row[6]=="":     #Colonna DATE X
-        row[6]= 'None'
-    if row[7]=="":     #Colonna ----------
+    if row[7]=="":     #Colonna DATE..
         row[7] = 'None'
     if row[8]=="":     #Colonna ----------
         row[8]= 'None'
