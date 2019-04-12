@@ -8,9 +8,7 @@ from pathlib import Path
 import random
 
 
-#TODO popolare fatto con id dimensioni
 #TODO C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ipotesi: per le date importanti settare data arrivo chiamata+random offset
-#TODO location -> lat,lon point
 
 cntNotValidRows=0
 cntValidRows=0
@@ -457,6 +455,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
         else:
             cnt = cnt + 1
     f.close()
+    g.close()
     exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
     exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
     exportDimensionGeoPlaceToCsv(tempTableGeoPlace, dimGeoPlaceCSVPath, lastIDGeoPlace)
