@@ -6,6 +6,7 @@ import datetime
 import ast
 from pathlib import Path
 import random
+import sys
 
 
 #TODO C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ipotesi: per le date importanti settare data arrivo chiamata+random offset
@@ -141,13 +142,6 @@ def mapPriority(priority):
         return 1
 
 def rowManipulation(row):
-    #Evaluate intervention duration
-    d1 = datetime.datetime.strptime(row[6], "%Y-%m-%dT%H:%M:%S")
-    d2 = datetime.datetime.strptime(row[10], "%Y-%m-%dT%H:%M:%S")
-    durationInMinutes = d2-d1
-    durationInMinutes =(int(durationInMinutes.seconds/60))
-
-    #convert priority to a known readable format
 
     call_number=row[0]
     unit_id=row[1]
@@ -184,11 +178,19 @@ def rowManipulation(row):
     location=row[32]
     rowid=row[33]
 
+    # Evaluate intervention duration
+    d1 = datetime.datetime.strptime(received_dtTm, "%Y-%m-%dT%H:%M:%S")
+    d2 = datetime.datetime.strptime(on_scene_dtTm, "%Y-%m-%dT%H:%M:%S")
+    durationInMinutes = d2-d1
+    durationInMinutes =(int(durationInMinutes.seconds/60))
+
+    #
     if (call_type_group==''):
         call_type_group=callTypeGroupDictionary.get(random.randint(0,3))
 
     call_type=call_type.replace(","," ")
 
+    # als_unit (bool) in postgres
     if als_unit=='True':
         als_unit=1
     else:
@@ -201,10 +203,6 @@ def rowManipulation(row):
     longitude=dictTest.get('longitude')
     latitude=dictTest.get('latitude')
     lat_lon='('+latitude+","+longitude+')'
-
-
-    #create the fact row
-    #manRow=(call_number,unit_id ,received_dtTm , on_scene_dtTm,durationInMinutes,0,origPriorityMapped,finalPriorityMapped,address,city,zipcode,neighborhood,box,station_area,battalion,call_type,call_type_group)
 
     manRow=(call_number,                    #0
             unit_id,                        #1
@@ -238,7 +236,7 @@ def rowManipulation(row):
             fire_prevention_district,       #29
             supervisor_district,            #30
             neighborhood,                   #31
-            lat_lon,                        #32 #TODO qui ci va il campo Point(lat,lon), modificare anche il tipo della creazione tabella
+            lat_lon,                        #32
             rowid,                          #33
             durationInMinutes)              #34
 
@@ -292,7 +290,6 @@ def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio addr
     return True
 
 def exportDimensionDurataToCsv(dict, path, lastID):
-    #lastID: è l'ultimo id inserito prima delle operazioni di aggiornamento
     with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
             if k>=lastID:
@@ -326,9 +323,7 @@ def exportDimensionDateToCsv(dict,path,lastID):
     fl.close()
 
 def exportDimensionGeoPlaceToCsv(dict, path, lastID):
-    # lastID: è l'ultimo id inserito prima delle operazioni di aggiornamento
     #tokenize value string
-
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
             if v >=lastID:
@@ -354,19 +349,6 @@ def exportDimensionCallTypeToCsv(dict,path,lastID):
 
 
 def exportFactOriginalToCsv(f, manRow):
-    '''
-    print(manRow)
-    stw = ((manRow[0]) + ";" + (manRow[1]) + ";" + (manRow[2]) + ";" + (manRow[3]) + ";" + repr(
-        manRow[4]) + ";" + repr(manRow[5]) + ";" + repr(manRow[6]) + ";" + repr(manRow[7]) + ";" + repr(
-        manRow[8]) + ";" + repr(manRow[9]) + ";" + repr(manRow[10]) + ";" + repr(manRow[11]) + ";" + repr(
-        manRow[12]) + ";" + (manRow[13]) + ";" + repr(manRow[14]) + ";" + (manRow[15]) + ";" + (
-        manRow[16]) + ";" + (manRow[17]) + ";" + (manRow[18]) + ";" + (manRow[19]) + ";" + (
-        manRow[20]) + ";" + (manRow[21]) + ";" + (manRow[22]) + ";" + (manRow[23]) + ";" + repr(
-        manRow[24]) + ";" + (manRow[25]) + ";" + repr(manRow[26]) + ";" + (manRow[27]) + ";" + repr(
-        manRow[28]) + ";" + (manRow[29]) + ";" + (manRow[30]) + ";" + (manRow[31]) + ";" + repr(
-        manRow[32]) + ";" + repr(manRow[33]) + "\n")
-    f.write(stw)
-    '''
     writer = csv.writer(f,lineterminator='\n', delimiter=';')
     writer.writerow(manRow)
 
@@ -388,15 +370,19 @@ def csvToPostgres(csvPath,tablename,cur,conn):
 
 
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
-inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv' #r"\datasource\testPython.csv"
+#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-0-500.csv'
+#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-500-750.csv'
+#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
+#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
+inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
 #inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
-dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\datasource\dim_durata.csv"
+dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
 dimGeoPlaceCSVPath= Path.cwd() / 'output/dim_geo_place.csv'
 dimResponsibilityCSVPath= Path.cwd() / 'output/dim_responsibility.csv'
 dimCallTypeCSVPath= Path.cwd() / 'output/dim_call_type.csv'
-factOriginal_csvPATH = Path.cwd() / 'output/factOriginal.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
-factDimensions_csvPATH = Path.cwd() / 'output/factDimensions.csv' #r"C:\Users\utente\OneDrive\Desktop\BD2\codice\fact.csv"
+factOriginal_csvPATH = Path.cwd() / 'output/factOriginal.csv'
+factDimensions_csvPATH = Path.cwd() / 'output/factDimensions.csv'
 
 conn = psycopg2.connect(postgresConnectionString)
 cur = conn.cursor()
@@ -410,12 +396,12 @@ callTypeGroupDictionary={
                             2:'Non Life-threatening',
                             3:'Alarm'
     }
+
 tempTableDurata={}
 tempTableGeoPlace={}
 tempTableDate={}
 tempTableResponsibility={}
 tempTableCallType={}
-
 
 # Fill dictionaries and fetch latest id
 lastIDDuration=putDurationTableInDictionary(tempTableDurata)
@@ -424,6 +410,10 @@ lastIDDate=putDateTableInDictionary(tempTableDate)
 lastIDResponsibility=putResponsibilityTableInDictionary(tempTableResponsibility)
 lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 
+# Last event date
+# cur.execute("SELECT MAX(received_dttm) FROM dispatch911_original")
+# lastEventDate=cur.fetchall()
+# lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
 open(factOriginal_csvPATH, 'w').close()
 f=open(factOriginal_csvPATH, 'a', newline='')
@@ -431,6 +421,7 @@ open(factDimensions_csvPATH, 'w').close()
 g=open(factDimensions_csvPATH, 'a', newline='')
 
 start_time = time.time()
+
 with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
     reader = csv.reader(csv_file)
     cnt = 0
@@ -471,26 +462,8 @@ csvToPostgres(dimCallTypeCSVPath,'dim_call_type',cur,conn)
 csvToPostgres(factOriginal_csvPATH, 'dispatch911_original', cur, conn)
 csvToPostgres(factDimensions_csvPATH, 'dispatch911_dimensions', cur, conn)
 
-'''
-import pandas as pd
-df = pd.read_csv(fact_csvPATH)
-df.columns = [c.lower() for c in df.columns] #postgres doesn't like capitals or spaces
-# Set is so the raw sql output is logged
-import logging
-logging.basicConfig()
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-from sqlalchemy import create_engine
-engine = create_engine('postgresql://postgres:1234@localhost:5432/test')
-
-df.to_sql("dispatch911_original",engine,if_exists="append",index=False)
-'''
-
 conn.commit()
-
-#f.close()
 
 print("Tempo ETL (sec): %s" % (time.time() - start_time))
 print("Righe non valide: %s" % (cntNotValidRows))
 print("Righe valide: %s" % (cntValidRows))
-
-#SELECT test2_table.distretto, COUNT(*) AS cnt FROM test2_table GROUP BY test2_table.distretto ORDER BY 2 DESC
