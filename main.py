@@ -20,7 +20,7 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS dim_received_date(id_received_date integer NOT NULL,received_DtTm timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_duration (id_duration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_geo_place(id_geo_place Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
-    cur.execute("CREATE TABLE IF NOT EXISTS dim_responsibility(id_responsibility smallint, box varchar,station_area varchar, battalion varchar(5))")
+    cur.execute("CREATE TABLE IF NOT EXISTS dim_responsibility(id_responsibility integer, box varchar,station_area varchar, battalion varchar(5))")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
     #cur.execute("DROP TABLE dispatch911_original")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)")
@@ -196,13 +196,17 @@ def rowManipulation(row):
     else:
         als_unit=0
 
-    number_of_alarms=int(number_of_alarms)
-    unit_sequence_call_dispatch=int(unit_sequence_call_dispatch)
+    if(number_of_alarms is not 'None'):
+        number_of_alarms=int(number_of_alarms)
+    if (unit_sequence_call_dispatch is not 'None'):
+        unit_sequence_call_dispatch=int(unit_sequence_call_dispatch)
 
+    lat_lon='None'
     dictTest=ast.literal_eval(location)
-    longitude=dictTest.get('longitude')
-    latitude=dictTest.get('latitude')
-    lat_lon='('+latitude+","+longitude+')'
+    if(dictTest is not None):
+        longitude=dictTest.get('longitude')
+        latitude=dictTest.get('latitude')
+        lat_lon='('+latitude+","+longitude+')'
 
     manRow=(call_number,                    #0
             unit_id,                        #1
@@ -247,10 +251,45 @@ def rowManipulation(row):
     '''
     return manRow
 
+import string
+def randomStr(size=6, chars=string.ascii_uppercase + string.digits+string.ascii_lowercase):
+    return ''.join(random.choice(chars) for x in range(size))
+
+def generateFakeRows(numOfRows=2000000):
+    fakeStr = 'FAKE'
+    legalPriorities=[2,3]
+
+    outputFakeRows = Path.cwd() / 'datasource/fakeRows2mil.csv'
+
+    f=codecs.open(outputFakeRows, 'w', encoding='utf-16-le')
+    #f = open(outputFakeRows, 'a', newline='')
+    writer = csv.writer(f, lineterminator='\n', delimiter=',')
+
+    for i in range(numOfRows):
+        fakeRow = [None] * 35
+        fakeRow[0]=fakeStr+randomStr(15) #call_number varchar(20)
+        fakeRow[1]=fakeStr+randomStr(5) #unit_id varchar(10)
+        fakeRow[31]=fakeStr+randomStr(45) #neighboorhood district varchar(50)
+        fakeRow[21]=random.choice(legalPriorities)
+        fakeRow[22]=random.choice(legalPriorities)
+        fakeRow[23]=random.choice(legalPriorities)
+        fakeRow[15]=fakeStr+randomStr(45) #address varchar50
+        fakeRow[16] = fakeStr + randomStr(25)  # city vc30
+        fakeRow[17] = randomStr(5,string.digits)  # zipcode vc10 #TODO guarantee conformity?
+        fakeRow[19] = fakeStr + randomStr(15)  # station area vc20
+        fakeRow[18] = randomStr(5)#battalion varchar5
+        fakeRow[20] = randomStr(5) #box varchar5
+        fakeRow[25] = 'Alarm'  # call type group enum/varchar?
+        fakeRow[3] = 'Other'  # call type  enum/varchar?
+
+        writer.writerow(fakeRow)
+    f.close()
+
 
 def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio address ...
-    if row[31]=="None": #Colonna 31: distretto di SF, non può essere None
-        return False
+
+    #if row[31]=="None": #Colonna 31: distretto di SF, non può essere None #TODO
+        #return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
         return False
     if row[22]=="":     #Colonna 22: priorità chiamata, non può essere nulla
@@ -258,7 +297,7 @@ def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio addr
     if row[23]=="":     #Colonna 23: priorità finale, non può essere nulla
         return False
     if row[6]=="":     #Colonna DATA chiamata, se assente usa data corrente come placeholder
-        row[6]= datetime.datetime.strftime(datetime.now(), "%Y-%m-%dT%H:%M:%S")
+        row[6]= datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%dT%H:%M:%S")
     if row[10]=="" or (row[10]==row[6] and row[6!=""])or row[10]<row[6]:     #Colonna 10: data intervento, genera data con un ritardo in minuti casuale per la data d'arrivo sul sito se assente o invalida
         row[10]=row[6]
         onSiteDate=datetime.datetime.strptime(row[10], "%Y-%m-%dT%H:%M:%S")
@@ -273,20 +312,12 @@ def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio addr
         return False
     if row[19]=="":     #Colonna 19: station area
         return False
-    if row[7]=="":     #Colonna DATE..
-        row[7] = 'None'
-    if row[8]=="":     #Colonna ----------
-        row[8]= 'None'
-    if row[9]=="":     #Colonna ----------
-        row[9]= 'None'
-    if row[10]=="":     #Colonna ----------
-        row[10]= 'None'
-    if row[11]=="":     #Colonna ----------
-        row[11]= 'None'
-    if row[12]=="":     #Colonna ----------
-        row[12]= 'None'
-    if row[14]=="":     #Colonna ----------
-        row[14] = 'None'
+
+    for i in range(len(row)):
+        if row[i] == "":
+            row[i] = 'None'
+    print(row)
+    print("----------------")
     return True
 
 def exportDimensionDurataToCsv(dict, path, lastID):
@@ -374,8 +405,11 @@ postgresConnectionString = "dbname=test user=postgres password=1234 host=localho
 #inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-500-750.csv'
 #inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
 #inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
-inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
+#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
 #inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
+
+inputCsvPath = Path.cwd() / 'datasource/fakeRows2mil.csv'
+
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
 dimGeoPlaceCSVPath= Path.cwd() / 'output/dim_geo_place.csv'
@@ -415,6 +449,9 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=cur.fetchall()
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
+generateFakeRows(1000000)
+print("fake rows generated")
+
 open(factOriginal_csvPATH, 'w').close()
 f=open(factOriginal_csvPATH, 'a', newline='')
 open(factDimensions_csvPATH, 'w').close()
@@ -426,12 +463,11 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
     reader = csv.reader(csv_file)
     cnt = 0
     for row in reader:
-        if (cnt != 0):
+        if cnt != 0:
             valResult=rowValidation(row)
             if valResult:
                 cntValidRows=cntValidRows+1
                 manRow = rowManipulation(row)
-
                 idDuration=getDimensionDurationRow(manRow[34], tempTableDurata)
                 idDate=getDimensionDateRow(manRow[6],tempTableDate)
                 idGeoPlace=getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31], tempTableGeoPlace)
@@ -443,6 +479,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 #cur.execute("INSERT INTO fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
+                print("invalid row:"+cnt)
         else:
             cnt = cnt + 1
     f.close()
