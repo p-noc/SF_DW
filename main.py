@@ -276,7 +276,7 @@ def generateFakeRows(numOfRows=200):
     fakeStr = 'FAKE'
     legalPriorities=[2,3]
 
-    outputFakeRows = Path.cwd() / 'datasource/fakeRows2mil.csv'
+    outputFakeRows = Path.cwd() / 'datasource/fakeRows.csv'
 
     f=codecs.open(outputFakeRows, 'w', encoding='utf-16-le')
     #f = open(outputFakeRows, 'a', newline='')
@@ -303,13 +303,54 @@ def generateFakeRows(numOfRows=200):
     f.close()
 
 def generateConsistentFakeRows(tableDurata,    tableGeoPlace,    tableDate,    tableResponsibility,    tableCallType, numOfRows=100):
-    exit(1)
+    fakeStr = 'FAKE'
+    legalPriorities = [2, 3]
 
+    #TODO
+    #if dictionaries are not empty...
+
+
+    outputFakeRows = Path.cwd() / 'datasource/fakeRows.csv'
+
+    f = codecs.open(outputFakeRows, 'w', encoding='utf-16-le')
+    # f = open(outputFakeRows, 'a', newline='')
+    writer = csv.writer(f, lineterminator='\n', delimiter=',')
+
+    for i in range(numOfRows):
+        fakeRow = [None] * 35
+        fakeRow[0] = fakeStr + randomStr(15)  # call_number varchar(20)
+        fakeRow[1] = fakeStr + randomStr(5)  # unit_id varchar(10)
+        fakeRow[21] = random.choice(legalPriorities)
+        fakeRow[22] = random.choice(legalPriorities)
+        fakeRow[23] = random.choice(legalPriorities)
+        fakeRow[25] = 'Alarm'  # call type group enum/varchar? TODO
+        fakeRow[3] = 'Other'  # call type  enum/varchar? TODO
+        #geoplace
+        if(not tableGeoPlace):
+            return -1
+        geoTuple=random.choice(list(tableGeoPlace.keys()))
+        geoFields = geoTuple.split("@")
+        fakeRow[31]=geoFields[3]
+        fakeRow[15]=geoFields[0]
+        fakeRow[16] = geoFields[1]
+        fakeRow[17] = geoFields[2]
+        #responsibility
+        if(not tableResponsibility):
+            return -1
+        respTuple=random.choice(list(tableResponsibility.keys()))
+        respFields= respTuple.split("@")
+        fakeRow[19] = respFields[1]
+        fakeRow[18] = respFields[2]
+        fakeRow[20] = respFields[0]
+
+        writer.writerow(fakeRow)
+    f.close()
 
 def rowValidation(row): #TODO se servono parametri per query, aggiungere check
 
     if row[25] == '' or row[25] == 'None' or row[25] is None: #call type group #TODO primo file ha tante righe senza parametro che ora vengono scartate
-        return False
+        row[25] = 'Alarm'
+        #return False
     if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
         return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
@@ -440,12 +481,16 @@ inputCsvPath1 = Path.cwd() / 'datasource/fire-department-calls-for-service-500-7
 inputCsvPath2 = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
 inputCsvPath3 = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
 inputCsvPath4 = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
-inputCsvPath5 = Path.cwd() / 'datasource/fakeRows2mil.csv'
-inputCsvPath6 = Path.cwd() / 'datasource/testPython.csv'
+inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
+inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
+inputList.append(inputCsvPath0)
+inputList.append(inputCsvPath1)
+inputList.append(inputCsvPath2)
+inputList.append(inputCsvPath3)
 inputList.append(inputCsvPath4)
-
+#inputList.append(inputCsvPathFAKE)
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -487,7 +532,7 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=cur.fetchall()
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
-#generateFakeRows(1000000)
+generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1000000)
 
 open(factOriginal_csvPATH, 'w').close()
 open(factDimensions_csvPATH, 'w').close()
