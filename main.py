@@ -52,9 +52,6 @@ def putGeoPlaceTableInDictionary(dictLoc):
     queryRes=cur.fetchall()
 
     for k in queryRes:
-        print(k)
-        print(k[3])
-        print("-------")
         geoPlaceString=k[1]+"@"+k[2]+"@"+str(k[3])+"@"+k[4]
         dictLoc[geoPlaceString]=k[0]
     if len(queryRes)>0:
@@ -275,7 +272,7 @@ import string
 def randomStr(size=6, chars=string.ascii_uppercase + string.digits+string.ascii_lowercase):
     return ''.join(random.choice(chars) for x in range(size))
 
-def generateFakeRows(numOfRows=2000000):
+def generateFakeRows(numOfRows=200):
     fakeStr = 'FAKE'
     legalPriorities=[2,3]
 
@@ -305,10 +302,15 @@ def generateFakeRows(numOfRows=2000000):
         writer.writerow(fakeRow)
     f.close()
 
+def generateConsistentFakeRows(tableDurata,    tableGeoPlace,    tableDate,    tableResponsibility,    tableCallType, numOfRows=100):
+    exit(1)
+
 
 def rowValidation(row): #TODO se servono parametri per query, aggiungere check
 
-    if row[31]=="": #Colonna 31: distretto di SF, non può essere None
+    if row[25] == '' or row[25] == 'None' or row[25] is None: #call type group #TODO primo file ha tante righe senza parametro che ora vengono scartate
+        return False
+    if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
         return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
         return False
@@ -442,8 +444,8 @@ inputCsvPath5 = Path.cwd() / 'datasource/fakeRows2mil.csv'
 inputCsvPath6 = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-inputList.append(inputCsvPath0)
-inputList.append(inputCsvPath1)
+inputList.append(inputCsvPath4)
+
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
