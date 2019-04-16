@@ -14,15 +14,25 @@ import sys
 cntNotValidRows=0
 cntValidRows=0
 
+class FragFile:
+    def __init__(self,year,cur):
+        path = 'output/factFrag' + year + '.csv'
+        self.filePath=Path.cwd() / path
+        self.fileDesc=open(self.filePath, 'w', newline='')
+        self.postgresTableName='dispatch911_frag_'+year
+        query = 'CREATE TABLE IF NOT EXISTS ' + self.postgresTableName + '(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)'
+        cur.execute(query)
+
 def createTables(cur,conn):
     #cur.execute("CREATE TYPE enum_call_type AS ENUM ('Administrative','Aircraft Emergency','Alarms','Assist Police','Citizen Assist / Service Call','Confined Space / Structure Collapse','Electrical Hazard','Elevator / Escalator Rescue','Explosion','Extrication / Entrapped (Machinery  Vehicle)','Fuel Spill','Gas Leak (Natural and LP Gases)','HazMat','High Angle Rescue','Industrial Accidents','Lightning Strike (Investigation)','Marine Fire','Medical Incident','Mutual Aid / Assist Outside Agency','Odor (Strange / Unknown)','Oil Spill','Other','Outside Fire','Smoke Investigation (Outside)','Structure Fire','Suspicious Package','Traffic Collision','Train / Rail Fire','Train / Rail Incident','Transfer','Vehicle Fire','Water Rescue','Watercraft in Distress')")
     #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm')")
+
+    cur.execute("DROP TABLE dispatch911_original,dim_received_date,dim_duration,dim_geo_place,dim_responsibility,dim_call_type,dispatch911_dimensions")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_received_date(id_received_date integer NOT NULL,received_DtTm timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_duration (id_duration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_geo_place(id_geo_place Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_responsibility(id_responsibility integer, box varchar,station_area varchar, battalion varchar(5))")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
-    #cur.execute("DROP TABLE dispatch911_original")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_dimensions(id_received_date integer,id_geo_place integer,id_duration smallint,id_responsibility integer,id_call_type smallint,call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_date timestamp without time zone, watch_date timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),location_f point,rowid varchar(50))")
     conn.commit()
@@ -141,7 +151,7 @@ def mapPriority(priority):
     else: #(priority=="1") or (priority=="I"):
         return 1
 
-def rowManipulation(row):
+def rowManipulation(row,cur):
 
     call_number=row[0]
     unit_id=row[1]
@@ -244,6 +254,13 @@ def rowManipulation(row):
             rowid,                          #33
             durationInMinutes)              #34
 
+    # ++++++++++++++++++++++++++++++++++++++++++++++++
+    # +++ Not logically linked to row manipulation +++
+    dt = datetime.datetime.strptime(manRow[6], "%Y-%m-%dT%H:%M:%S")
+    if fragTablesPath.get(dt.year) is None:
+        newFragFilePath(dt.year, fragTablesPath,cur)
+    # +++ ---------------------------------------- +++
+    # ++++++++++++++++++++++++++++++++++++++++++++++++
     '''
     for i in range(35):
         print(i,row[i])
@@ -316,8 +333,6 @@ def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio addr
     for i in range(len(row)):
         if row[i] == "":
             row[i] = 'None'
-    print(row)
-    print("----------------")
     return True
 
 def exportDimensionDurataToCsv(dict, path, lastID):
@@ -390,7 +405,6 @@ def exportFactDimToCsv(f, manRow, idDuration, idDate, idGeoPlace, idResponsibili
     writer = csv.writer(f,lineterminator='\n', delimiter=';')
     writer.writerow(stw)
 
-
 def csvToPostgres(csvPath,tablename,cur,conn):
     with open(csvPath, 'r') as f:
         try:
@@ -398,17 +412,30 @@ def csvToPostgres(csvPath,tablename,cur,conn):
         except psycopg2.OperationalError as e:
             print(e)
 
+def newFragFilePath(year,fragTablesPath,cur):
+    fragFile=FragFile(repr(year),cur)
+    fragTablesPath[year]= fragFile
+
+def exportFactToFragCSV(row,fragTablesPath):
+    dt=datetime.datetime.strptime(row[6],"%Y-%m-%dT%H:%M:%S")
+    writer = csv.writer(fragTablesPath.get(dt.year).fileDesc, lineterminator='\n', delimiter=';')
+    writer.writerow(row)
+
+def closeFragmentationFiles (fragTablesPath):
+    for year, fragFile in fragTablesPath.items():
+        fragFile.fileDesc.close()
+
 
 
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
-#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-0-500.csv'
+inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-0-500.csv'
 #inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-500-750.csv'
 #inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
 #inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
 #inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
 #inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
 
-inputCsvPath = Path.cwd() / 'datasource/fakeRows2mil.csv'
+#inputCsvPath = Path.cwd() / 'datasource/fakeRows2mil.csv'
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -436,6 +463,7 @@ tempTableGeoPlace={}
 tempTableDate={}
 tempTableResponsibility={}
 tempTableCallType={}
+fragTablesPath={}
 
 # Fill dictionaries and fetch latest id
 lastIDDuration=putDurationTableInDictionary(tempTableDurata)
@@ -449,8 +477,7 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=cur.fetchall()
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
-generateFakeRows(1000000)
-print("fake rows generated")
+#generateFakeRows(1000000)
 
 open(factOriginal_csvPATH, 'w').close()
 f=open(factOriginal_csvPATH, 'a', newline='')
@@ -467,7 +494,7 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
             valResult=rowValidation(row)
             if valResult:
                 cntValidRows=cntValidRows+1
-                manRow = rowManipulation(row)
+                manRow = rowManipulation(row,cur)
                 idDuration=getDimensionDurationRow(manRow[34], tempTableDurata)
                 idDate=getDimensionDateRow(manRow[6],tempTableDate)
                 idGeoPlace=getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31], tempTableGeoPlace)
@@ -475,20 +502,23 @@ with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
                 idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
 
                 exportFactOriginalToCsv(f, manRow)
+                exportFactToFragCSV(manRow,fragTablesPath)
                 exportFactDimToCsv(g,manRow,idDuration,idDate,idGeoPlace,idResponsibility,idCallType)
                 #cur.execute("INSERT INTO fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
             else:
                 cntNotValidRows=cntNotValidRows+1
-                print("invalid row:"+cnt)
         else:
             cnt = cnt + 1
     f.close()
     g.close()
+    closeFragmentationFiles(fragTablesPath)
     exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
     exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
     exportDimensionGeoPlaceToCsv(tempTableGeoPlace, dimGeoPlaceCSVPath, lastIDGeoPlace)
     exportDimensionResponsibilityToCsv(tempTableResponsibility,dimResponsibilityCSVPath,lastIDResponsibility)
     exportDimensionCallTypeToCsv(tempTableCallType,dimCallTypeCSVPath,lastIDCallType)
+
+
 
 
 csvToPostgres(dimDurationCSVPath, 'dim_duration', cur, conn)
@@ -498,6 +528,10 @@ csvToPostgres(dimResponsibilityCSVPath,'dim_responsibility',cur,conn)
 csvToPostgres(dimCallTypeCSVPath,'dim_call_type',cur,conn)
 csvToPostgres(factOriginal_csvPATH, 'dispatch911_original', cur, conn)
 csvToPostgres(factDimensions_csvPATH, 'dispatch911_dimensions', cur, conn)
+for y,fragFile in fragTablesPath.items():
+    csvToPostgres(fragFile.filePath,fragFile.postgresTableName,cur,conn)
+
+closeFragmentationFiles(fragTablesPath)
 
 conn.commit()
 
