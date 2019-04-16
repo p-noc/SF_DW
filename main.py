@@ -18,7 +18,7 @@ class FragFile:
     def __init__(self,year,cur):
         path = 'output/factFrag' + year + '.csv'
         self.filePath=Path.cwd() / path
-        self.fileDesc=open(self.filePath, 'w', newline='')
+        self.fileDesc=open(self.filePath, 'a', newline='')
         self.postgresTableName='dispatch911_frag_'+year
         query = 'CREATE TABLE IF NOT EXISTS ' + self.postgresTableName + '(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)'
         cur.execute(query)
@@ -27,7 +27,7 @@ def createTables(cur,conn):
     #cur.execute("CREATE TYPE enum_call_type AS ENUM ('Administrative','Aircraft Emergency','Alarms','Assist Police','Citizen Assist / Service Call','Confined Space / Structure Collapse','Electrical Hazard','Elevator / Escalator Rescue','Explosion','Extrication / Entrapped (Machinery  Vehicle)','Fuel Spill','Gas Leak (Natural and LP Gases)','HazMat','High Angle Rescue','Industrial Accidents','Lightning Strike (Investigation)','Marine Fire','Medical Incident','Mutual Aid / Assist Outside Agency','Odor (Strange / Unknown)','Oil Spill','Other','Outside Fire','Smoke Investigation (Outside)','Structure Fire','Suspicious Package','Traffic Collision','Train / Rail Fire','Train / Rail Incident','Transfer','Vehicle Fire','Water Rescue','Watercraft in Distress')")
     #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm')")
 
-    cur.execute("DROP TABLE dispatch911_original,dim_received_date,dim_duration,dim_geo_place,dim_responsibility,dim_call_type,dispatch911_dimensions")
+    #cur.execute("DROP TABLE IF NOT EXISTS dispatch911_original,dim_received_date,dim_duration,dim_geo_place,dim_responsibility,dim_call_type,dispatch911_dimensions")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_received_date(id_received_date integer NOT NULL,received_DtTm timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_duration (id_duration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_geo_place(id_geo_place Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
@@ -52,6 +52,9 @@ def putGeoPlaceTableInDictionary(dictLoc):
     queryRes=cur.fetchall()
 
     for k in queryRes:
+        print(k)
+        print(k[3])
+        print("-------")
         geoPlaceString=k[1]+"@"+k[2]+"@"+str(k[3])+"@"+k[4]
         dictLoc[geoPlaceString]=k[0]
     if len(queryRes)>0:
@@ -303,10 +306,10 @@ def generateFakeRows(numOfRows=2000000):
     f.close()
 
 
-def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio address ...
+def rowValidation(row): #TODO se servono parametri per query, aggiungere check
 
-    #if row[31]=="None": #Colonna 31: distretto di SF, non può essere None #TODO
-        #return False
+    if row[31]=="": #Colonna 31: distretto di SF, non può essere None
+        return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
         return False
     if row[22]=="":     #Colonna 22: priorità chiamata, non può essere nulla
@@ -336,7 +339,7 @@ def rowValidation(row): #TODO aggiungere campi relativi alle query, esempio addr
     return True
 
 def exportDimensionDurataToCsv(dict, path, lastID):
-    with open(path, 'w',newline='') as fl:
+    with open(path, 'a',newline='') as fl:
         for k,v in dict.items():
             if k>=lastID:
                 dimRow = [k,v, 0, 0, 0, 0]
@@ -353,7 +356,7 @@ def exportDimensionDurataToCsv(dict, path, lastID):
     fl.close()
 
 def exportDimensionDateToCsv(dict,path,lastID):
-    with open(path,'w',newline='') as fl:
+    with open(path,'a',newline='') as fl:
         for k,v in dict.items():
             if v>=lastID:
                 dt=datetime.datetime.strptime(k,"%Y-%m-%dT%H:%M:%S")
@@ -370,7 +373,7 @@ def exportDimensionDateToCsv(dict,path,lastID):
 
 def exportDimensionGeoPlaceToCsv(dict, path, lastID):
     #tokenize value string
-    with open(path, 'w', newline='') as fl:
+    with open(path, 'a', newline='') as fl:
         for k, v in dict.items():
             if v >=lastID:
                 fieldsList=k.split("@")
@@ -378,7 +381,7 @@ def exportDimensionGeoPlaceToCsv(dict, path, lastID):
     fl.close()
 
 def exportDimensionResponsibilityToCsv(dict,path,lastID):
-    with open(path, 'w', newline='') as fl:
+    with open(path, 'a', newline='') as fl:
         for k, v in dict.items():
             if v >= lastID:
                 fieldsList = k.split("@")
@@ -386,7 +389,7 @@ def exportDimensionResponsibilityToCsv(dict,path,lastID):
     fl.close()
 
 def exportDimensionCallTypeToCsv(dict,path,lastID):
-    with open(path, 'w', newline='') as fl:
+    with open(path, 'a', newline='') as fl:
         for k, v in dict.items():
             if v >= lastID:
                 fieldList=k.split("@")
@@ -428,14 +431,19 @@ def closeFragmentationFiles (fragTablesPath):
 
 
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
-inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-0-500.csv'
-#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-500-750.csv'
-#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
-#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
-#inputCsvPath = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
-#inputCsvPath = Path.cwd() / 'datasource/testPython.csv'
 
-#inputCsvPath = Path.cwd() / 'datasource/fakeRows2mil.csv'
+
+inputCsvPath0 = Path.cwd() / 'datasource/fire-department-calls-for-service-0-500.csv'
+inputCsvPath1 = Path.cwd() / 'datasource/fire-department-calls-for-service-500-750.csv'
+inputCsvPath2 = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
+inputCsvPath3 = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
+inputCsvPath4 = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
+inputCsvPath5 = Path.cwd() / 'datasource/fakeRows2mil.csv'
+inputCsvPath6 = Path.cwd() / 'datasource/testPython.csv'
+
+inputList = []
+inputList.append(inputCsvPath0)
+inputList.append(inputCsvPath1)
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -480,44 +488,44 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 #generateFakeRows(1000000)
 
 open(factOriginal_csvPATH, 'w').close()
-f=open(factOriginal_csvPATH, 'a', newline='')
 open(factDimensions_csvPATH, 'w').close()
-g=open(factDimensions_csvPATH, 'a', newline='')
 
 start_time = time.time()
+for currentCSV in inputList:
+    fragTablesPath = {}
+    f=open(factOriginal_csvPATH, 'a', newline='')
+    g=open(factDimensions_csvPATH, 'a', newline='')
+    with codecs.open(currentCSV, 'rU', 'utf-16-le') as csv_file:
+        reader = csv.reader(csv_file)
+        cnt = 0
+        for row in reader:
+            if cnt != 0:
+                valResult=rowValidation(row)
+                if valResult:
+                    cntValidRows=cntValidRows+1
+                    manRow = rowManipulation(row,cur)
+                    idDuration=getDimensionDurationRow(manRow[34], tempTableDurata)
+                    idDate=getDimensionDateRow(manRow[6],tempTableDate)
+                    idGeoPlace=getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31], tempTableGeoPlace)
+                    idResponsibility=getDimensionResponsibilityRow(manRow[20], manRow[19],manRow[18],tempTableResponsibility)
+                    idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
 
-with codecs.open(inputCsvPath, 'rU', 'utf-16-le') as csv_file:
-    reader = csv.reader(csv_file)
-    cnt = 0
-    for row in reader:
-        if cnt != 0:
-            valResult=rowValidation(row)
-            if valResult:
-                cntValidRows=cntValidRows+1
-                manRow = rowManipulation(row,cur)
-                idDuration=getDimensionDurationRow(manRow[34], tempTableDurata)
-                idDate=getDimensionDateRow(manRow[6],tempTableDate)
-                idGeoPlace=getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31], tempTableGeoPlace)
-                idResponsibility=getDimensionResponsibilityRow(manRow[20], manRow[19],manRow[18],tempTableResponsibility)
-                idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
-
-                exportFactOriginalToCsv(f, manRow)
-                exportFactToFragCSV(manRow,fragTablesPath)
-                exportFactDimToCsv(g,manRow,idDuration,idDate,idGeoPlace,idResponsibility,idCallType)
-                #cur.execute("INSERT INTO fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
+                    exportFactOriginalToCsv(f, manRow)
+                    exportFactToFragCSV(manRow,fragTablesPath)
+                    exportFactDimToCsv(g,manRow,idDuration,idDate,idGeoPlace,idResponsibility,idCallType)
+                    #cur.execute("INSERT INTO fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
+                else:
+                    cntNotValidRows=cntNotValidRows+1
             else:
-                cntNotValidRows=cntNotValidRows+1
-        else:
-            cnt = cnt + 1
+                cnt = cnt + 1
+        exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
+        exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
+        exportDimensionGeoPlaceToCsv(tempTableGeoPlace, dimGeoPlaceCSVPath, lastIDGeoPlace)
+        exportDimensionResponsibilityToCsv(tempTableResponsibility,dimResponsibilityCSVPath,lastIDResponsibility)
+        exportDimensionCallTypeToCsv(tempTableCallType,dimCallTypeCSVPath,lastIDCallType)
     f.close()
     g.close()
     closeFragmentationFiles(fragTablesPath)
-    exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
-    exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
-    exportDimensionGeoPlaceToCsv(tempTableGeoPlace, dimGeoPlaceCSVPath, lastIDGeoPlace)
-    exportDimensionResponsibilityToCsv(tempTableResponsibility,dimResponsibilityCSVPath,lastIDResponsibility)
-    exportDimensionCallTypeToCsv(tempTableCallType,dimCallTypeCSVPath,lastIDCallType)
-
 
 
 
