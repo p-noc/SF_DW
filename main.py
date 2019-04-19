@@ -491,7 +491,7 @@ inputList.append(inputCsvPath1)
 #inputList.append(inputCsvPath3)
 #inputList.append(inputCsvPath4)
 #inputList.append(inputCsvPathFAKE)
-inputList.append(inputCsvPathTEST)
+#inputList.append(inputCsvPathTEST)
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -533,7 +533,8 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=cur.fetchall()
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
-#generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1001)
+if inputCsvPathFAKE in inputList:
+    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 50)
 
 start_time = time.time()
 for currentCSV in inputList:
@@ -571,6 +572,7 @@ for currentCSV in inputList:
     f.close()
     g.close()
     closeFragmentationFiles(fragTablesPath)
+    print("Fine di un file (sec): %s" % (time.time() - start_time))
 
 csvToPostgres(dimDurationCSVPath, 'dim_duration', cur, conn)
 csvToPostgres(dimGeoPlaceCSVPath, 'dim_geo_place', cur, conn)
@@ -579,8 +581,13 @@ csvToPostgres(dimResponsibilityCSVPath,'dim_responsibility',cur,conn)
 csvToPostgres(dimCallTypeCSVPath,'dim_call_type',cur,conn)
 csvToPostgres(factOriginal_csvPATH, 'dispatch911_original', cur, conn)
 csvToPostgres(factDimensions_csvPATH, 'dispatch911_dimensions', cur, conn)
+
+print("Fine dei csvToPost senza Frag (sec): %s" % (time.time() - start_time))
+
 for y,fragFile in fragTablesPath.items():
     csvToPostgres(fragFile.filePath,fragFile.postgresTableName,cur,conn)
+
+print("Fine dei csvToPost con Frag (sec): %s" % (time.time() - start_time))
 
 open(factOriginal_csvPATH, 'w').close()
 open(factDimensions_csvPATH, 'w').close()
