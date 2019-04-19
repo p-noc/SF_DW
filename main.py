@@ -306,8 +306,8 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
     fakeStr = 'FAKE'
     legalPriorities = [2, 3]
 
-    #TODO
-    #if dictionaries are not empty...
+    if (not tableGeoPlace or not tableResponsibility):
+        print("empty dimensions, fake rows will not be inserted")
 
 
     outputFakeRows = Path.cwd() / 'datasource/fakeRows.csv'
