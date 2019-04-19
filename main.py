@@ -8,9 +8,6 @@ from pathlib import Path
 import random
 import sys
 
-
-#TODO Scambiare call_date e watch_date in manrow coerentemente con database
-
 cntNotValidRows=0
 cntValidRows=0
 
@@ -323,8 +320,8 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
         fakeRow[21] = random.choice(legalPriorities)
         fakeRow[22] = random.choice(legalPriorities)
         fakeRow[23] = random.choice(legalPriorities)
-        fakeRow[25] = 'Alarm'  # call type group enum/varchar? TODO
-        fakeRow[3] = 'Other'  # call type  enum/varchar? TODO
+        fakeRow[25] = 'Alarm'
+        fakeRow[3] = 'Other'
         #geoplace
         if(not tableGeoPlace):
             return -1
@@ -346,9 +343,9 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
         writer.writerow(fakeRow)
     f.close()
 
-def rowValidation(row): #TODO se servono parametri per query, aggiungere check
+def rowValidation(row):
 
-    if row[25] == '' or row[25] == 'None' or row[25] is None: #call type group #TODO primo file ha tante righe senza parametro che ora vengono scartate
+    if row[25] == '' or row[25] == 'None' or row[25] is None: #call type group #TODO implementare o no oggi per ieri?
         row[25] = 'Alarm'
         #return False
     if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
