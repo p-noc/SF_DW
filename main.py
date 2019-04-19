@@ -8,9 +8,6 @@ from pathlib import Path
 import random
 import sys
 
-
-#TODO Scambiare call_date e watch_date in manrow coerentemente con database
-
 cntNotValidRows=0
 cntValidRows=0
 
