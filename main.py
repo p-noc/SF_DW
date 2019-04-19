@@ -479,15 +479,17 @@ inputCsvPath1 = Path.cwd() / 'datasource/fire-department-calls-for-service-500-7
 inputCsvPath2 = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
 inputCsvPath3 = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
 inputCsvPath4 = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
+inputCsvPath5 = Path.cwd() / 'datasource/fire-department-calls-for-service_temp.csv'
 inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-#inputList.append(inputCsvPath0)
+inputList.append(inputCsvPath0)
 inputList.append(inputCsvPath1)
-inputList.append(inputCsvPath2)
+#inputList.append(inputCsvPath2)
 #inputList.append(inputCsvPath3)
 #inputList.append(inputCsvPath4)
+#inputList.append(inputCsvPath5)
 #inputList.append(inputCsvPathFAKE)
 #inputList.append(inputCsvPathTEST)
 
@@ -532,10 +534,10 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
 if inputCsvPathFAKE in inputList:
-    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 50)
+    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 10000)
 
 start_global_time = time.time()
-
+cnt=0
 for currentCSV in inputList:
     start_local_time=time.time()
     f=open(factOriginal_csvPATH, 'w', newline='')
@@ -543,7 +545,6 @@ for currentCSV in inputList:
     openFragmentationFiles(fragTablesPath)
     with codecs.open(currentCSV, 'rU', 'utf-16-le') as csv_file:
         reader = csv.reader(csv_file)
-        cnt = 0
         for row in reader:
             if cnt != 0:
                 valResult=rowValidation(row)
