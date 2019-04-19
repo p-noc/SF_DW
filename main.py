@@ -157,8 +157,8 @@ def rowManipulation(row,cur):
     unit_id=row[1]
     incident_number=row[2]
     call_type=row[3]
-    call_date=row[4]
-    watch_date=row[5]
+    call_date=row[5]
+    watch_date=row[4]
     received_dtTm=row[6]
     entry_dtTm=row[7]
     dispatch_dtTm=row[8]
@@ -486,12 +486,12 @@ inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
 #inputList.append(inputCsvPath0)
-#inputList.append(inputCsvPath1)
+inputList.append(inputCsvPath1)
 #inputList.append(inputCsvPath2)
 #inputList.append(inputCsvPath3)
 #inputList.append(inputCsvPath4)
-inputList.append(inputCsvPathFAKE)
-#inputList.append(inputCsvPathTEST)
+#inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPathTEST)
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -533,11 +533,11 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=cur.fetchall()
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
-generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1001)
+#generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1001)
 
 start_time = time.time()
 for currentCSV in inputList:
-    fragTablesPath = {}
+    #fragTablesPath = {}
     f=open(factOriginal_csvPATH, 'a', newline='')
     g=open(factDimensions_csvPATH, 'a', newline='')
     with codecs.open(currentCSV, 'rU', 'utf-16-le') as csv_file:
@@ -572,8 +572,6 @@ for currentCSV in inputList:
     g.close()
     closeFragmentationFiles(fragTablesPath)
 
-
-
 csvToPostgres(dimDurationCSVPath, 'dim_duration', cur, conn)
 csvToPostgres(dimGeoPlaceCSVPath, 'dim_geo_place', cur, conn)
 csvToPostgres(dimDateCSVPath,'dim_received_date',cur,conn)
@@ -586,7 +584,6 @@ for y,fragFile in fragTablesPath.items():
 
 open(factOriginal_csvPATH, 'w').close()
 open(factDimensions_csvPATH, 'w').close()
-
 for year, fragFile in fragTablesPath.items():
     open(fragFile.filePath,'w').close()
 
