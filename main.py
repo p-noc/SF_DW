@@ -269,6 +269,7 @@ import string
 def randomStr(size=6, chars=string.ascii_uppercase + string.digits+string.ascii_lowercase):
     return ''.join(random.choice(chars) for x in range(size))
 
+'''
 def generateFakeRows(numOfRows=200):
     fakeStr = 'FAKE'
     legalPriorities=[2,3]
@@ -298,6 +299,7 @@ def generateFakeRows(numOfRows=200):
 
         writer.writerow(fakeRow)
     f.close()
+'''
 
 def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableResponsibility, tableCallType, numOfRows=100):
     fakeStr = 'FAKE'
@@ -320,20 +322,16 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
         fakeRow[21] = random.choice(legalPriorities)
         fakeRow[22] = random.choice(legalPriorities)
         fakeRow[23] = random.choice(legalPriorities)
-        fakeRow[25] = 'Alarm'  # call type group enum/varchar? TODO
-        fakeRow[3] = 'Other'  # call type  enum/varchar? TODO
-        #geoplace
-        if(not tableGeoPlace):
-            return -1
+        fakeRow[25] = 'Alarm'
+        fakeRow[3] = 'Other'
+
         geoTuple=random.choice(list(tableGeoPlace.keys()))
         geoFields = geoTuple.split("@")
         fakeRow[31]=geoFields[3]
         fakeRow[15]=geoFields[0]
         fakeRow[16] = geoFields[1]
         fakeRow[17] = geoFields[2]
-        #responsibility
-        if(not tableResponsibility):
-            return -1
+
         respTuple=random.choice(list(tableResponsibility.keys()))
         respFields= respTuple.split("@")
         fakeRow[19] = respFields[1]
@@ -343,9 +341,9 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
         writer.writerow(fakeRow)
     f.close()
 
-def rowValidation(row): #TODO se servono parametri per query, aggiungere check
+def rowValidation(row):
 
-    if row[25] == '' or row[25] == 'None' or row[25] is None: #call type group #TODO primo file ha tante righe senza parametro che ora vengono scartate
+    if row[25] == '' or row[25] == 'None' or row[25] is None: #TODO Bisogna gestire una cosa oggi per ieri?
         row[25] = 'Alarm'
         #return False
     if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
