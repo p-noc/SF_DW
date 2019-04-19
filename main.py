@@ -535,7 +535,7 @@ if inputCsvPathFAKE in inputList:
     generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 50)
 
 start_global_time = time.time()
-
+print('ok')
 for currentCSV in inputList:
     start_local_time=time.time()
     f=open(factOriginal_csvPATH, 'w', newline='')
