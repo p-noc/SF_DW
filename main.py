@@ -308,7 +308,7 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
 
     if (not tableGeoPlace or not tableResponsibility):
         print("empty dimensions, fake rows will not be inserted")
-
+        return -1;
 
     outputFakeRows = Path.cwd() / 'datasource/fakeRows.csv'
 
@@ -325,18 +325,14 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
         fakeRow[23] = random.choice(legalPriorities)
         fakeRow[25] = 'Alarm'  # call type group enum/varchar? TODO
         fakeRow[3] = 'Other'  # call type  enum/varchar? TODO
-        #geoplace
-        if(not tableGeoPlace):
-            return -1
+
         geoTuple=random.choice(list(tableGeoPlace.keys()))
         geoFields = geoTuple.split("@")
         fakeRow[31]=geoFields[3]
         fakeRow[15]=geoFields[0]
         fakeRow[16] = geoFields[1]
         fakeRow[17] = geoFields[2]
-        #responsibility
-        if(not tableResponsibility):
-            return -1
+
         respTuple=random.choice(list(tableResponsibility.keys()))
         respFields= respTuple.split("@")
         fakeRow[19] = respFields[1]
