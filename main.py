@@ -370,6 +370,10 @@ def rowValidation(row):
         return False
     if row[19]=="":     #Colonna 19: station area
         return False
+    if row[18] == "":  # Colonna 18: battalion
+        return False
+    if row[20] == "":  # Colonna 20: box
+        return False
 
     for i in range(len(row)):
         if row[i] == "":
@@ -535,7 +539,7 @@ if inputCsvPathFAKE in inputList:
     generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 50)
 
 start_global_time = time.time()
-print('ok')
+
 for currentCSV in inputList:
     start_local_time=time.time()
     f=open(factOriginal_csvPATH, 'w', newline='')
