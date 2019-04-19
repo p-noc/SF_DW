@@ -9,7 +9,7 @@ import random
 import sys
 
 
-#TODO C'è da scegliere come apparare le date non esistenti (tipo HospitalDTTM), ipotesi: per le date importanti settare data arrivo chiamata+random offset
+#TODO Scambiare call_date e watch_date in manrow coerentemente con database
 
 cntNotValidRows=0
 cntValidRows=0
@@ -302,7 +302,7 @@ def generateFakeRows(numOfRows=200):
         writer.writerow(fakeRow)
     f.close()
 
-def generateConsistentFakeRows(tableDurata,    tableGeoPlace,    tableDate,    tableResponsibility,    tableCallType, numOfRows=100):
+def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableResponsibility, tableCallType, numOfRows=100):
     fakeStr = 'FAKE'
     legalPriorities = [2, 3]
 
@@ -382,9 +382,9 @@ def rowValidation(row): #TODO se servono parametri per query, aggiungere check
     return True
 
 def exportDimensionDurataToCsv(dict, path, lastID):
-    with open(path, 'a',newline='') as fl:
+    with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
-            if k>=lastID:
+            if k> lastID:
                 dimRow = [k,v, 0, 0, 0, 0]
                 if (v>=25):
                     dimRow[5] = 1
@@ -399,9 +399,9 @@ def exportDimensionDurataToCsv(dict, path, lastID):
     fl.close()
 
 def exportDimensionDateToCsv(dict,path,lastID):
-    with open(path,'a',newline='') as fl:
+    with open(path,'w',newline='') as fl:
         for k,v in dict.items():
-            if v>=lastID:
+            if v> lastID:
                 dt=datetime.datetime.strptime(k,"%Y-%m-%dT%H:%M:%S")
                 if (dt.month==12) or (dt.month==1) or (dt.month==2):
                     season=1
@@ -416,25 +416,25 @@ def exportDimensionDateToCsv(dict,path,lastID):
 
 def exportDimensionGeoPlaceToCsv(dict, path, lastID):
     #tokenize value string
-    with open(path, 'a', newline='') as fl:
+    with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v >=lastID:
+            if v > lastID:
                 fieldsList=k.split("@")
                 fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2] + ";" + fieldsList[3] + "\n")
     fl.close()
 
 def exportDimensionResponsibilityToCsv(dict,path,lastID):
-    with open(path, 'a', newline='') as fl:
+    with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v >= lastID:
+            if v > lastID:
                 fieldsList = k.split("@")
                 fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2]+ "\n")
     fl.close()
 
 def exportDimensionCallTypeToCsv(dict,path,lastID):
-    with open(path, 'a', newline='') as fl:
+    with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v >= lastID:
+            if v > lastID:
                 fieldList=k.split("@")
                 fl.write(repr(v)+";"+fieldList[0]+";"+fieldList[1]+"\n")
     fl.close()
@@ -485,12 +485,13 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-inputList.append(inputCsvPath0)
-inputList.append(inputCsvPath1)
-inputList.append(inputCsvPath2)
-inputList.append(inputCsvPath3)
-inputList.append(inputCsvPath4)
-#inputList.append(inputCsvPathFAKE)
+#inputList.append(inputCsvPath0)
+#inputList.append(inputCsvPath1)
+#inputList.append(inputCsvPath2)
+#inputList.append(inputCsvPath3)
+#inputList.append(inputCsvPath4)
+inputList.append(inputCsvPathFAKE)
+#inputList.append(inputCsvPathTEST)
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -532,10 +533,7 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=cur.fetchall()
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
-generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1000000)
-
-open(factOriginal_csvPATH, 'w').close()
-open(factDimensions_csvPATH, 'w').close()
+generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1001)
 
 start_time = time.time()
 for currentCSV in inputList:
@@ -586,7 +584,11 @@ csvToPostgres(factDimensions_csvPATH, 'dispatch911_dimensions', cur, conn)
 for y,fragFile in fragTablesPath.items():
     csvToPostgres(fragFile.filePath,fragFile.postgresTableName,cur,conn)
 
-closeFragmentationFiles(fragTablesPath)
+open(factOriginal_csvPATH, 'w').close()
+open(factDimensions_csvPATH, 'w').close()
+
+for year, fragFile in fragTablesPath.items():
+    open(fragFile.filePath,'w').close()
 
 conn.commit()
 
