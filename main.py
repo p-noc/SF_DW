@@ -362,13 +362,17 @@ def rowValidation(row):
         minutesOffset=random.randint(10,40)
         onSiteDate=onSiteDate+datetime.timedelta(minutes=minutesOffset)
         row[10]=datetime.datetime.strftime(onSiteDate, "%Y-%m-%dT%H:%M:%S")
-    if row[15]== "":    #Colonna 15: address
+    if row[15]== "" or row[15] == 'None' or row[15] is None:    #Colonna 15: address
         return False
     if row[16]=="":     #Colonna 16: city
         return False
     if row[17]=="":     #Colonna 17: zipcode
         return False
     if row[19]=="":     #Colonna 19: station area
+        return False
+    if row[18]=="":     #Colonna 18: battalion
+        return False
+    if row[20]=="":     #Colonna 20: box
         return False
 
     for i in range(len(row)):
@@ -483,9 +487,9 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-#inputList.append(inputCsvPath0)
-inputList.append(inputCsvPath1)
-inputList.append(inputCsvPath2)
+inputList.append(inputCsvPath0)
+#inputList.append(inputCsvPath1)
+#inputList.append(inputCsvPath2)
 #inputList.append(inputCsvPath3)
 #inputList.append(inputCsvPath4)
 #inputList.append(inputCsvPathFAKE)
@@ -532,7 +536,7 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
 if inputCsvPathFAKE in inputList:
-    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 50)
+    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 2000000)
 
 start_global_time = time.time()
 
