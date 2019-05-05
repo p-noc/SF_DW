@@ -490,7 +490,7 @@ inputList = []
 #inputList.append(inputCsvPath0)
 inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
-#inputList.append(inputCsvPath3)
+inputList.append(inputCsvPath3)
 #inputList.append(inputCsvPath4)
 #inputList.append(inputCsvPathFAKE)
 #inputList.append(inputCsvPathTEST)
@@ -523,12 +523,7 @@ tempTableResponsibility={}
 tempTableCallType={}
 fragTablesPath={}
 
-# Fill dictionaries and fetch latest id
-lastIDDuration=putDurationTableInDictionary(tempTableDurata)
-lastIDGeoPlace=putGeoPlaceTableInDictionary(tempTableGeoPlace)
-lastIDDate=putDateTableInDictionary(tempTableDate)
-lastIDResponsibility=putResponsibilityTableInDictionary(tempTableResponsibility)
-lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
+
 
 # Last event date
 # cur.execute("SELECT MAX(received_dttm) FROM dispatch911_original")
@@ -536,11 +531,18 @@ lastIDCallType=putCallTypeTableInDictionary(tempTableCallType)
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
 if inputCsvPathFAKE in inputList:
-    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 50)
+    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1000000)
 
 start_global_time = time.time()
 
 for currentCSV in inputList:
+    # Fill dictionaries and fetch latest id
+    lastIDDuration = putDurationTableInDictionary(tempTableDurata)
+    lastIDGeoPlace = putGeoPlaceTableInDictionary(tempTableGeoPlace)
+    lastIDDate = putDateTableInDictionary(tempTableDate)
+    lastIDResponsibility = putResponsibilityTableInDictionary(tempTableResponsibility)
+    lastIDCallType = putCallTypeTableInDictionary(tempTableCallType)
+    
     start_local_time=time.time()
     f=open(factOriginal_csvPATH, 'w', newline='')
     g=open(factDimensions_csvPATH, 'w', newline='')
@@ -554,11 +556,23 @@ for currentCSV in inputList:
                 if valResult:
                     cntValidRows=cntValidRows+1
                     manRow = rowManipulation(row,cur)
-                    idDuration=getDimensionDurationRow(manRow[34], tempTableDurata)
-                    idDate=getDimensionDateRow(manRow[6],tempTableDate)
-                    idGeoPlace=getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31], tempTableGeoPlace)
-                    idResponsibility=getDimensionResponsibilityRow(manRow[20], manRow[19],manRow[18],tempTableResponsibility)
-                    idCallType=getDimensionCallTypeRow(manRow[3],manRow[25],tempTableCallType)
+                    idDuration = getDimensionDurationRow(manRow[34], tempTableDurata)
+                    if (idDuration == 0):
+                        idDuration += 1;
+                    idDate = getDimensionDateRow(manRow[6], tempTableDate)
+                    if (idDate == 0):
+                        idDate += 1;
+                    idGeoPlace = getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31],
+                                                         tempTableGeoPlace)
+                    if (idGeoPlace == 0):
+                        idGeoPlace += 1;
+                    idResponsibility = getDimensionResponsibilityRow(manRow[20], manRow[19], manRow[18],
+                                                                     tempTableResponsibility)
+                    if (idResponsibility == 0):
+                        idResponsibility += 1;
+                    idCallType = getDimensionCallTypeRow(manRow[3], manRow[25], tempTableCallType)
+                    if (idCallType == 0):
+                        idCallType += 1;
 
                     exportFactOriginalToCsv(f, manRow)
                     exportFactToFragCSV(manRow,fragTablesPath)
@@ -592,8 +606,8 @@ for currentCSV in inputList:
 
     open(factOriginal_csvPATH, 'w').close()
     open(factDimensions_csvPATH, 'w').close()
-    for year, fragFile in fragTablesPath.items():
-        open(fragFile.filePath,'w').close()
+    #for year, fragFile in fragTablesPath.items():
+    #    open(fragFile.filePath,'w').close()
 
     conn.commit()
     print("Righe non valide: %s" % (cntNotValidRows))
