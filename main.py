@@ -355,7 +355,8 @@ def rowValidation(row):
     if row[23]=="":     #Colonna 23: priorità finale, non può essere nulla
         return False
     if row[6]=="":     #Colonna DATA chiamata, se assente usa data corrente come placeholder
-        row[6]= datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%dT%H:%M:%S")
+        yearRandom=random.randint(2020,2040)
+        row[6]= datetime.datetime.strftime(datetime.datetime.now().replace(year=yearRandom), "%Y-%m-%dT%H:%M:%S")
     if row[10]=="" or (row[10]==row[6] and row[6!=""])or row[10]<row[6]:     #Colonna 10: data intervento, genera data con un ritardo in minuti casuale per la data d'arrivo sul sito se assente o invalida
         row[10]=row[6]
         onSiteDate=datetime.datetime.strptime(row[10], "%Y-%m-%dT%H:%M:%S")
@@ -526,9 +527,10 @@ inputList.append(inputCsvPath16)
 inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
-#inputList.append(inputCsvPathFAKE)
-#inputList.append(inputCsvPathTEST)
 '''
+inputList.append(inputCsvPathFAKE)
+#inputList.append(inputCsvPathTEST)
+
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -577,7 +579,7 @@ for currentCSV in inputList:
 
     if currentCSV==inputCsvPathFAKE:
         generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility,
-                                   tempTableCallType, 1000000)
+                                   tempTableCallType, 249000)
 
     start_local_time=time.time()
     f=open(factOriginal_csvPATH, 'w', newline='')
@@ -652,6 +654,7 @@ for currentCSV in inputList:
     cntNotValidRows=0
     cntValidRows=0
 
+'''
 #Query testing
 queryArray=[]
 queryArray.append("SELECT dat.year_f, geo.neighborhooods,count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type	INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' GROUP BY  dat.year_f, geo.neighborhooods")
@@ -666,7 +669,7 @@ for q in queryArray:
         queryTime=queryTime+(time.time()-query_start_time)
         #print(queryTime/(i+1))
     print(queryTime/queryIterations)
-
+'''
 
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
 
