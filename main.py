@@ -488,11 +488,11 @@ inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
 #inputList.append(inputCsvPath0)
-inputList.append(inputCsvPath1)
-inputList.append(inputCsvPath2)
-inputList.append(inputCsvPath3)
+#inputList.append(inputCsvPath1)
+#inputList.append(inputCsvPath2)
+#inputList.append(inputCsvPath3)
 #inputList.append(inputCsvPath4)
-#inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPathFAKE)
 #inputList.append(inputCsvPathTEST)
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
@@ -530,8 +530,6 @@ fragTablesPath={}
 # lastEventDate=cur.fetchall()
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
-if inputCsvPathFAKE in inputList:
-    generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility, tempTableCallType, 1000000)
 
 start_global_time = time.time()
 
@@ -542,7 +540,11 @@ for currentCSV in inputList:
     lastIDDate = putDateTableInDictionary(tempTableDate)
     lastIDResponsibility = putResponsibilityTableInDictionary(tempTableResponsibility)
     lastIDCallType = putCallTypeTableInDictionary(tempTableCallType)
-    
+
+    if currentCSV==inputCsvPathFAKE:
+        generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility,
+                                   tempTableCallType, 1000000)
+
     start_local_time=time.time()
     f=open(factOriginal_csvPATH, 'w', newline='')
     g=open(factDimensions_csvPATH, 'w', newline='')
