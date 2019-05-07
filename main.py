@@ -20,6 +20,36 @@ class FragFile:
         query = 'CREATE TABLE IF NOT EXISTS ' + self.postgresTableName + '(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)'
         cur.execute(query)
 
+# Class for query testing
+class QueryTester:
+    csvQueryResults=None
+    resultsCsvWriter=None
+    queryArray=[]
+    queryIterations = 10
+    csvQueryResultsPath = Path.cwd() / 'output/queryResults.csv'
+
+    def __init__(self):
+        self.csvQueryResults = open(self.csvQueryResultsPath, 'w', newline='')
+        self.resultsCsvWriter = csv.writer(self.csvQueryResults, lineterminator='\n', delimiter=';')
+
+        self.queryArray.append("SELECT dat.year_f, geo.neighborhooods,count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type	INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' GROUP BY  dat.year_f, geo.neighborhooods")
+        self.queryArray.append("select resp.battalion, emergency.call_type, count(*), avg(dur.minutes)from dispatch911_dimensions as fact inner join dim_call_type as emergency on fact.id_call_type = emergency.id_call_type inner join dim_duration as dur on fact.id_duration = dur.id_duration inner join dim_responsibility as resp on fact.id_responsibility = resp.id_responsibility group by resp.battalion, emergency.call_type")
+
+    def computeAndWriteAvgs(self, block):
+        queryIndex=1
+        for q in self.queryArray:
+            queryTime = 0
+            for i in range(0,self.queryIterations):
+                query_start_time=time.time()
+                cur.execute(q)
+                queryTime=queryTime+(time.time()-query_start_time)
+                #print(queryTime/(i+1))
+
+            outResultRow=[block,queryIndex,queryTime/self.queryIterations]
+            self.resultsCsvWriter.writerow(outResultRow)
+            queryIndex=queryIndex+1
+            print(outResultRow)
+
 def createTables(cur,conn):
     #cur.execute("CREATE TYPE enum_call_type AS ENUM ('Administrative','Aircraft Emergency','Alarms','Assist Police','Citizen Assist / Service Call','Confined Space / Structure Collapse','Electrical Hazard','Elevator / Escalator Rescue','Explosion','Extrication / Entrapped (Machinery  Vehicle)','Fuel Spill','Gas Leak (Natural and LP Gases)','HazMat','High Angle Rescue','Industrial Accidents','Lightning Strike (Investigation)','Marine Fire','Medical Incident','Mutual Aid / Assist Outside Agency','Odor (Strange / Unknown)','Oil Spill','Other','Outside Fire','Smoke Investigation (Outside)','Structure Fire','Suspicious Package','Traffic Collision','Train / Rail Fire','Train / Rail Incident','Transfer','Vehicle Fire','Water Rescue','Watercraft in Distress')")
     #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm')")
@@ -528,7 +558,7 @@ inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
 '''
-inputList.append(inputCsvPathFAKE)
+#inputList.append(inputCsvPathFAKE)
 #inputList.append(inputCsvPathTEST)
 
 
@@ -654,22 +684,9 @@ for currentCSV in inputList:
     cntNotValidRows=0
     cntValidRows=0
 
-'''
-#Query testing
-queryArray=[]
-queryArray.append("SELECT dat.year_f, geo.neighborhooods,count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type	INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' GROUP BY  dat.year_f, geo.neighborhooods")
-queryArray.append("select resp.battalion, emergency.call_type, count(*), avg(dur.minutes)from dispatch911_dimensions as fact inner join dim_call_type as emergency on fact.id_call_type = emergency.id_call_type inner join dim_duration as dur on fact.id_duration = dur.id_duration inner join dim_responsibility as resp on fact.id_responsibility = resp.id_responsibility group by resp.battalion, emergency.call_type")
-
-queryIterations=10
-for q in queryArray:
-    queryTime = 0
-    for i in range(0,queryIterations):
-        query_start_time=time.time()
-        cur.execute(q)
-        queryTime=queryTime+(time.time()-query_start_time)
-        #print(queryTime/(i+1))
-    print(queryTime/queryIterations)
-'''
-
+queryTester = QueryTester()
+for w in range(0,5):
+    queryTester.computeAndWriteAvgs(w)
+queryTester.csvQueryResults.close()
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
 
