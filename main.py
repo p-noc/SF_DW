@@ -478,21 +478,54 @@ def openFragmentationFiles (fragTablesPath):
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
 
 
-inputCsvPath0 = Path.cwd() / 'datasource/fire-department-calls-for-service-0-500.csv'
-inputCsvPath1 = Path.cwd() / 'datasource/fire-department-calls-for-service-500-750.csv'
-inputCsvPath2 = Path.cwd() / 'datasource/fire-department-calls-for-service-750-1000.csv'
-inputCsvPath3 = Path.cwd() / 'datasource/fire-department-calls-for-service-1000-1250.csv'
-inputCsvPath4 = Path.cwd() / 'datasource/fire-department-calls-for-service-1250-1500.csv'
+inputCsvPath1 = Path.cwd() / 'datasource/01-fire-department-calls-for-service.csv'
+inputCsvPath2 = Path.cwd() / 'datasource/02-fire-department-calls-for-service.csv'
+inputCsvPath3 = Path.cwd() / 'datasource/03-fire-department-calls-for-service.csv'
+inputCsvPath4 = Path.cwd() / 'datasource/04-fire-department-calls-for-service.csv'
+inputCsvPath5 = Path.cwd() / 'datasource/05-fire-department-calls-for-service.csv'
+
+inputCsvPath6 = Path.cwd() / 'datasource/06-fire-department-calls-for-service.csv'
+inputCsvPath7 = Path.cwd() / 'datasource/07-fire-department-calls-for-service.csv'
+inputCsvPath8 = Path.cwd() / 'datasource/08-fire-department-calls-for-service.csv'
+inputCsvPath9 = Path.cwd() / 'datasource/09-fire-department-calls-for-service.csv'
+inputCsvPath10 = Path.cwd() / 'datasource/10-fire-department-calls-for-service.csv'
+
+inputCsvPath11 = Path.cwd() / 'datasource/11-fire-department-calls-for-service.csv'
+inputCsvPath12 = Path.cwd() / 'datasource/12-fire-department-calls-for-service.csv'
+inputCsvPath13 = Path.cwd() / 'datasource/13-fire-department-calls-for-service.csv'
+inputCsvPath14 = Path.cwd() / 'datasource/14-fire-department-calls-for-service.csv'
+inputCsvPath15 = Path.cwd() / 'datasource/15-fire-department-calls-for-service.csv'
+
+inputCsvPath16 = Path.cwd() / 'datasource/16-fire-department-calls-for-service.csv'
+inputCsvPath17 = Path.cwd() / 'datasource/17-fire-department-calls-for-service.csv'
+inputCsvPath18 = Path.cwd() / 'datasource/18-fire-department-calls-for-service.csv'
+inputCsvPath19 = Path.cwd() / 'datasource/19-fire-department-calls-for-service.csv'
+
+
 inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-#inputList.append(inputCsvPath0)
-#inputList.append(inputCsvPath1)
-#inputList.append(inputCsvPath2)
-#inputList.append(inputCsvPath3)
-#inputList.append(inputCsvPath4)
-inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPath1)
+inputList.append(inputCsvPath2)
+inputList.append(inputCsvPath3)
+inputList.append(inputCsvPath4)
+inputList.append(inputCsvPath5)
+inputList.append(inputCsvPath6)
+inputList.append(inputCsvPath7)
+inputList.append(inputCsvPath8)
+inputList.append(inputCsvPath9)
+inputList.append(inputCsvPath10)
+inputList.append(inputCsvPath11)
+inputList.append(inputCsvPath12)
+inputList.append(inputCsvPath13)
+inputList.append(inputCsvPath14)
+inputList.append(inputCsvPath15)
+inputList.append(inputCsvPath16)
+inputList.append(inputCsvPath17)
+inputList.append(inputCsvPath18)
+inputList.append(inputCsvPath19)
+#inputList.append(inputCsvPathFAKE)
 #inputList.append(inputCsvPathTEST)
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
@@ -608,8 +641,8 @@ for currentCSV in inputList:
 
     open(factOriginal_csvPATH, 'w').close()
     open(factDimensions_csvPATH, 'w').close()
-    #for year, fragFile in fragTablesPath.items():
-    #    open(fragFile.filePath,'w').close()
+    for year, fragFile in fragTablesPath.items():
+        open(fragFile.filePath,'w').close()
 
     conn.commit()
     print("Righe non valide: %s" % (cntNotValidRows))
