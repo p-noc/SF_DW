@@ -506,6 +506,7 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
+'''
 inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
@@ -527,6 +528,7 @@ inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
 #inputList.append(inputCsvPathFAKE)
 #inputList.append(inputCsvPathTEST)
+'''
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -559,8 +561,7 @@ fragTablesPath={}
 
 
 # Last event date
-# cur.execute("SELECT MAX(received_dttm) FROM dispatch911_original")
-# lastEventDate=cur.fetchall()
+
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -650,6 +651,22 @@ for currentCSV in inputList:
     print("+++")
     cntNotValidRows=0
     cntValidRows=0
+
+#Query testing
+queryArray=[]
+queryArray.append("SELECT dat.year_f, geo.neighborhooods,count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type	INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' GROUP BY  dat.year_f, geo.neighborhooods")
+queryArray.append("select resp.battalion, emergency.call_type, count(*), avg(dur.minutes)from dispatch911_dimensions as fact inner join dim_call_type as emergency on fact.id_call_type = emergency.id_call_type inner join dim_duration as dur on fact.id_duration = dur.id_duration inner join dim_responsibility as resp on fact.id_responsibility = resp.id_responsibility group by resp.battalion, emergency.call_type")
+
+queryIterations=10
+for q in queryArray:
+    queryTime = 0
+    for i in range(0,queryIterations):
+        query_start_time=time.time()
+        cur.execute(q)
+        queryTime=queryTime+(time.time()-query_start_time)
+        #print(queryTime/(i+1))
+    print(queryTime/queryIterations)
+
 
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
 
