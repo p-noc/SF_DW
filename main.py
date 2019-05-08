@@ -32,8 +32,10 @@ class QueryTester:
         self.csvQueryResults = open(self.csvQueryResultsPath, 'w', newline='')
         self.resultsCsvWriter = csv.writer(self.csvQueryResults, lineterminator='\n', delimiter=';')
 
-        self.queryArray.append("SELECT dat.year_f, geo.neighborhooods,count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type	INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' GROUP BY  dat.year_f, geo.neighborhooods")
-        self.queryArray.append("select resp.battalion, emergency.call_type, count(*), avg(dur.minutes)from dispatch911_dimensions as fact inner join dim_call_type as emergency on fact.id_call_type = emergency.id_call_type inner join dim_duration as dur on fact.id_duration = dur.id_duration inner join dim_responsibility as resp on fact.id_responsibility = resp.id_responsibility group by resp.battalion, emergency.call_type")
+        # Query 3 (Original)
+        self.queryArray.append("(SELECT '1' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (12,1,2) AND call_type_group='Fire' GROUP BY neighborhood_district) union (SELECT '2' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (3,4,5) AND call_type_group='Fire' GROUP BY neighborhood_district) union (SELECT '3' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (6,7,8) AND call_type_group='Fire' GROUP BY neighborhood_district)		 union (SELECT '4' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (9,10,11) AND call_type_group='Fire' GROUP BY neighborhood_district) order by neighborhood_district, 1")
+        # Query 3 (Dimensions)
+        self.queryArray.append(" SELECT dat.season, geo.neighborhooods, count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type_group='Fire' GROUP BY dat.season, geo.neighborhooods order by 2,1 ")
 
     def computeAndWriteAvgs(self, block):
         queryIndex=1
@@ -506,8 +508,9 @@ def openFragmentationFiles (fragTablesPath):
         fragFile.fileDesc = open(fragFile.filePath, 'w', newline='')
 
 
-postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
 
+
+postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
 
 inputCsvPath1 = Path.cwd() / 'datasource/01-fire-department-calls-for-service.csv'
 inputCsvPath2 = Path.cwd() / 'datasource/02-fire-department-calls-for-service.csv'
@@ -531,7 +534,6 @@ inputCsvPath16 = Path.cwd() / 'datasource/16-fire-department-calls-for-service.c
 inputCsvPath17 = Path.cwd() / 'datasource/17-fire-department-calls-for-service.csv'
 inputCsvPath18 = Path.cwd() / 'datasource/18-fire-department-calls-for-service.csv'
 inputCsvPath19 = Path.cwd() / 'datasource/19-fire-department-calls-for-service.csv'
-
 
 inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
@@ -558,7 +560,7 @@ inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
 '''
-#inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPathFAKE)
 #inputList.append(inputCsvPathTEST)
 
 
@@ -569,6 +571,18 @@ dimResponsibilityCSVPath= Path.cwd() / 'output/dim_responsibility.csv'
 dimCallTypeCSVPath= Path.cwd() / 'output/dim_call_type.csv'
 factOriginal_csvPATH = Path.cwd() / 'output/factOriginal.csv'
 factDimensions_csvPATH = Path.cwd() / 'output/factDimensions.csv'
+
+clockTimeExtraction=0
+clockTimeTransformation=0
+clockTimeLoading=0
+clockTimeMatView=0
+clockTimeOther=0
+
+elapsedTimeExtraction=0
+elapsedTimeTransformation=0
+elapsedTimeLoading=0
+elapsedTimeMatView=0
+elapsedTimeOther=0
 
 conn = psycopg2.connect(postgresConnectionString)
 cur = conn.cursor()
@@ -609,9 +623,11 @@ for currentCSV in inputList:
 
     if currentCSV==inputCsvPathFAKE:
         generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility,
-                                   tempTableCallType, 249000)
+                                   tempTableCallType, 50000)
 
-    start_local_time=time.time()
+    start_local_time=time.time()    #TODO se mettiamo i clock per ogni evento tipo Ext, Transf, Load, questo ci vuole?
+    clockTimeExtraction=time.time()    # Start (Extraction phase)
+
     f=open(factOriginal_csvPATH, 'w', newline='')
     g=open(factDimensions_csvPATH, 'w', newline='')
     openFragmentationFiles(fragTablesPath)
@@ -623,7 +639,19 @@ for currentCSV in inputList:
                 valResult=rowValidation(row)
                 if valResult:
                     cntValidRows=cntValidRows+1
+
+                    elapsedTimeExtraction=elapsedTimeExtraction+(time.time()-clockTimeExtraction)
+                    # Pause (Extraction phase)
+
+                    # Start (Transformation phase)
+                    clockTimeTransformation=time.time()
                     manRow = rowManipulation(row,cur)
+                    elapsedTimeTransformation=elapsedTimeTransformation+(time.time()-clockTimeTransformation)
+                    # End (Transformation phase)
+
+                    # Start (OTHER)
+                    clockTimeOther = time.time()
+
                     idDuration = getDimensionDurationRow(manRow[34], tempTableDurata)
                     if (idDuration == 0):
                         idDuration += 1;
@@ -641,24 +669,45 @@ for currentCSV in inputList:
                     idCallType = getDimensionCallTypeRow(manRow[3], manRow[25], tempTableCallType)
                     if (idCallType == 0):
                         idCallType += 1;
+                    elapsedTimeOther = elapsedTimeOther + (time.time() - clockTimeOther)
+                    # End (Transformation phase)
+
+                    # Start (Loading)
+                    clockTimeLoading=time.time()
 
                     exportFactOriginalToCsv(f, manRow)
                     exportFactToFragCSV(manRow,fragTablesPath)
                     exportFactDimToCsv(g,manRow,idDuration,idDate,idGeoPlace,idResponsibility,idCallType)
-                    #cur.execute("INSERT INTO fact (call_number, unit_id, rec_date, scene_date, durata_int, or_prio, fin_prio,for_key_durata) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",(manRow[0], manRow[1], manRow[2], manRow[3],manRow[4],manRow[5],manRow[6],rowDim))
+
+                    # Pause (Loading)
+                    elapsedTimeLoading=elapsedTimeLoading+(time.time()-clockTimeLoading)
                 else:
                     cntNotValidRows=cntNotValidRows+1
+                # Re-Start (Extraction phase)
+                clockTimeExtraction = time.time()
             else:
                 cnt = cnt + 1
+
+
+        # Re-Start (Loading)
+        clockTimeLoading = time.time()
+
         exportDimensionDurataToCsv(tempTableDurata, dimDurationCSVPath, lastIDDuration)
         exportDimensionDateToCsv(tempTableDate,dimDateCSVPath,lastIDDate)
         exportDimensionGeoPlaceToCsv(tempTableGeoPlace, dimGeoPlaceCSVPath, lastIDGeoPlace)
         exportDimensionResponsibilityToCsv(tempTableResponsibility,dimResponsibilityCSVPath,lastIDResponsibility)
         exportDimensionCallTypeToCsv(tempTableCallType,dimCallTypeCSVPath,lastIDCallType)
+
+        # Pause (Loading)
+        elapsedTimeLoading = elapsedTimeLoading + (time.time() - clockTimeLoading)
+
     f.close()
     g.close()
     closeFragmentationFiles(fragTablesPath)
-    print("Fine fase estrazione e trasformazione (sec): %s" % (time.time() - start_local_time))
+    #print("Fine fase estrazione e trasformazione (sec): %s" % (time.time() - start_local_time))
+
+    # Re-Start (Loading)
+    clockTimeLoading = time.time()
 
     csvToPostgres(dimDurationCSVPath, 'dim_duration', cur, conn)
     csvToPostgres(dimGeoPlaceCSVPath, 'dim_geo_place', cur, conn)
@@ -670,14 +719,22 @@ for currentCSV in inputList:
     for y,fragFile in fragTablesPath.items():
         csvToPostgres(fragFile.filePath,fragFile.postgresTableName,cur,conn)
 
-    print("Fine fase di caricamento (sec): %s" % (time.time() - start_local_time))
-
     open(factOriginal_csvPATH, 'w').close()
     open(factDimensions_csvPATH, 'w').close()
+    open(inputCsvPathFAKE,'w').close()
     for year, fragFile in fragTablesPath.items():
         open(fragFile.filePath,'w').close()
 
     conn.commit()
+
+    # End (Loading)
+    elapsedTimeLoading = elapsedTimeLoading + (time.time() - clockTimeLoading)
+    print("Fine ETL (sec): %s" % (time.time() - start_local_time))
+    print("+ elapsedTimeLoading: %s" % elapsedTimeLoading)
+    print("+ elapsedTimeExtraction: %s" % elapsedTimeExtraction)
+    print("+ elapsedTimeTransformation: %s" % elapsedTimeTransformation)
+    print("+ elapsedTimeOther: %s" % elapsedTimeOther)
+
     print("Righe non valide: %s" % (cntNotValidRows))
     print("Righe valide: %s" % (cntValidRows))
     print("+++")
@@ -685,7 +742,7 @@ for currentCSV in inputList:
     cntValidRows=0
 
 queryTester = QueryTester()
-for w in range(0,5):
+for w in range(0,1):
     queryTester.computeAndWriteAvgs(w)
 queryTester.csvQueryResults.close()
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
