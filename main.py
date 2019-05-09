@@ -72,7 +72,7 @@ def putDurationTableInDictionary(dict):
     cur.execute("SELECT dim_duration.id_duration, dim_duration.minutes FROM dim_duration")
     queryRes=cur.fetchall()
     for k in queryRes:
-        dict[k[0]]=k[1]
+        dict[k[1]]=k[0]
     if len(queryRes)>0:
         return queryRes[len(queryRes)-1][0]
     else:
@@ -127,12 +127,19 @@ def putCallTypeTableInDictionary(dictCallType):
         return 0
 
 def getDimensionDurationRow(duration, tempTableDurata):
-    if (duration not in tempTableDurata.values()):
+    '''if (duration not in tempTableDurata.values()):
         tempTableDurata[len(tempTableDurata)] = duration
 
     for idd,dur in tempTableDurata.items():
         if dur==duration:
             return idd
+    '''
+    res=tempTableDurata.get(duration)
+    if res is None:
+        tempTableDurata[duration]=len(tempTableDurata)
+        return len(tempTableDurata)-1
+    else:
+        return res
 
 def getDimensionDateRow(recDate,tempTableDate):
     res=tempTableDate.get(recDate)
@@ -418,15 +425,15 @@ def rowValidation(row):
 def exportDimensionDurataToCsv(dict, path, lastID):
     with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
-            if k> lastID:
-                dimRow = [k,v, 0, 0, 0, 0]
-                if (v>=25):
+            if v> lastID:
+                dimRow = [v,k, 0, 0, 0, 0]
+                if (k>=25):
                     dimRow[5] = 1
-                if (v<=5):
+                if (k<=5):
                     dimRow[2] = 1
-                if (v<=15):
+                if (k<=15):
                     dimRow[3] = 1
-                if (v<=25):
+                if (k<=25):
                     dimRow[4] = 1
 
                 fl.write(repr(dimRow[0]) + ";" +  repr(dimRow[1]) + ";" + repr(dimRow[2]) + ";" + repr(dimRow[3]) + ";" + repr(dimRow[4]) + ";" +  repr(dimRow[5]) +"\n")
@@ -564,8 +571,8 @@ inputList.append(inputCsvPath16)
 '''inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
-'''
 inputList.append(inputCsvPathFAKE)
+'''
 #inputList.append(inputCsvPathTEST)
 
 
@@ -727,9 +734,9 @@ for currentCSV in inputList:
     for y,fragFile in fragTablesPath.items():
         csvToPostgres(fragFile.filePath,fragFile.postgresTableName,cur,conn)
 
-    open(factOriginal_csvPATH, 'w').close()
-    open(factDimensions_csvPATH, 'w').close()
-    open(inputCsvPathFAKE,'w').close()
+    #open(factOriginal_csvPATH, 'w').close()
+    #open(factDimensions_csvPATH, 'w').close()
+    #open(inputCsvPathFAKE,'w').close()
     for year, fragFile in fragTablesPath.items():
         open(fragFile.filePath,'w').close()
 
