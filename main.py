@@ -17,7 +17,7 @@ class FragFile:
         self.filePath=Path.cwd() / path
         self.fileDesc=open(self.filePath, 'a', newline='')
         self.postgresTableName='dispatch911_frag_'+year
-        query = 'CREATE TABLE IF NOT EXISTS ' + self.postgresTableName + '(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)'
+        query = 'CREATE TABLE IF NOT EXISTS ' + self.postgresTableName + '(id_received_date integer,id_geo_place integer,id_duration smallint,id_responsibility integer,id_call_type smallint,call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_date timestamp without time zone, watch_date timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),location_f point,rowid varchar(50))'
         cur.execute(query)
 
 # Class for query testing
@@ -494,10 +494,12 @@ def newFragFilePath(year,fragTablesPath,cur):
     fragFile=FragFile(repr(year),cur)
     fragTablesPath[year]= fragFile
 
-def exportFactToFragCSV(row,fragTablesPath):
-    dt=datetime.datetime.strptime(row[6],"%Y-%m-%dT%H:%M:%S")
+def exportFactToFragCSV(fragTablesPath ,manRow, idDuration, idDate, idGeoPlace, idResponsibility, idCallType):
+#def exportFactToFragCSV(row,fragTablesPath):
+    dt=datetime.datetime.strptime(manRow[6],"%Y-%m-%dT%H:%M:%S")
+    stw = [(idDate),(idGeoPlace),(idDuration),(idResponsibility),(idCallType),manRow[0],(manRow[1]),(manRow[2]),(manRow[4]),(manRow[5]),(manRow[7]),(manRow[8]), (manRow[9]) , (manRow[10]) , (manRow[11]) , (manRow[12]) , (manRow[13]) , (manRow[14]) , (manRow[21]) , (manRow[22]) , (manRow[23]) , (manRow[24]) , (manRow[26]) , (manRow[27]) , (manRow[28]) , (manRow[29]) , (manRow[30]) , (manRow[32]) , (manRow[33])]
     writer = csv.writer(fragTablesPath.get(dt.year).fileDesc, lineterminator='\n', delimiter=';')
-    writer.writerow(row)
+    writer.writerow(stw)
 
 def closeFragmentationFiles (fragTablesPath):
     for year, fragFile in fragTablesPath.items():
@@ -539,8 +541,9 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-'''
+
 inputList.append(inputCsvPath1)
+'''
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
 inputList.append(inputCsvPath4)
@@ -610,10 +613,13 @@ fragTablesPath={}
 
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
+queryTester = QueryTester()
 
 start_global_time = time.time()
 
+csvIteration=0
 for currentCSV in inputList:
+    csvIteration=csvIteration+1
     # Fill dictionaries and fetch latest id
     lastIDDuration = putDurationTableInDictionary(tempTableDurata)
     lastIDGeoPlace = putGeoPlaceTableInDictionary(tempTableGeoPlace)
@@ -623,7 +629,7 @@ for currentCSV in inputList:
 
     if currentCSV==inputCsvPathFAKE:
         generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility,
-                                   tempTableCallType, 50000)
+                                   tempTableCallType, 5000)
 
     start_local_time=time.time()    #TODO se mettiamo i clock per ogni evento tipo Ext, Transf, Load, questo ci vuole?
     clockTimeExtraction=time.time()    # Start (Extraction phase)
@@ -676,7 +682,7 @@ for currentCSV in inputList:
                     clockTimeLoading=time.time()
 
                     exportFactOriginalToCsv(f, manRow)
-                    exportFactToFragCSV(manRow,fragTablesPath)
+                    exportFactToFragCSV(fragTablesPath,manRow,idDuration,idDate,idGeoPlace,idResponsibility,idCallType)
                     exportFactDimToCsv(g,manRow,idDuration,idDate,idGeoPlace,idResponsibility,idCallType)
 
                     # Pause (Loading)
@@ -730,20 +736,28 @@ for currentCSV in inputList:
     # End (Loading)
     elapsedTimeLoading = elapsedTimeLoading + (time.time() - clockTimeLoading)
     print("Fine ETL (sec): %s" % (time.time() - start_local_time))
-    print("+ elapsedTimeLoading: %s" % elapsedTimeLoading)
     print("+ elapsedTimeExtraction: %s" % elapsedTimeExtraction)
     print("+ elapsedTimeTransformation: %s" % elapsedTimeTransformation)
+    print("+ elapsedTimeLoading: %s" % elapsedTimeLoading)
     print("+ elapsedTimeOther: %s" % elapsedTimeOther)
 
     print("Righe non valide: %s" % (cntNotValidRows))
     print("Righe valide: %s" % (cntValidRows))
     print("+++")
+
+    elapsedTimeExtraction=0
+    elapsedTimeTransformation=0
+    elapsedTimeLoading=0
+    elapsedTimeOther=0
     cntNotValidRows=0
     cntValidRows=0
+    queryTester.computeAndWriteAvgs(csvIteration)
 
-queryTester = QueryTester()
+'''
 for w in range(0,1):
     queryTester.computeAndWriteAvgs(w)
+'''
 queryTester.csvQueryResults.close()
+
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
 
