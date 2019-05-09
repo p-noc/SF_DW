@@ -64,8 +64,9 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_dimensions(id_received_date integer,id_geo_place integer,id_duration smallint,id_responsibility integer,id_call_type smallint,call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_date timestamp without time zone, watch_date timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),location_f point,rowid varchar(50))")
-    cur.execute("create materialized view if not exists intervention_daytime as ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration)INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type	INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date  where recdate.hour_f in (1,2,3,4,5,6,7,8,9,10,11,12)))")
-    cur.execute("create materialized view if not exists intervention_nighttime as ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date	where recdate.hour_f in (13,14,15,16,17,18,19,20,21,22,23,24)))")
+    cur.execute("CREATE MATERIALIZED VIEW IF NOT EXISTS intervention_daytime AS ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration)INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type	INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date  where recdate.hour_f in (1,2,3,4,5,6,7,8,9,10,11,12)))")
+    cur.execute("CREATE MATERIALIZED VIEW IF NOT EXISTS intervention_nighttime AS ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date	where recdate.hour_f in (13,14,15,16,17,18,19,20,21,22,23,24)))")
+
     conn.commit()
 
 def putDurationTableInDictionary(dict):
@@ -556,18 +557,18 @@ inputList.append(inputCsvPath9)
 inputList.append(inputCsvPath10)
 inputList.append(inputCsvPath11)
 inputList.append(inputCsvPath12)
+'''
 inputList.append(inputCsvPath13)
 inputList.append(inputCsvPath14)
 '''
 inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
-'''inputList.append(inputCsvPath17)
+inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
-'''
 inputList.append(inputCsvPathFAKE)
-#inputList.append(inputCsvPathTEST)
-
+inputList.append(inputCsvPathTEST)
+'''
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -733,6 +734,15 @@ for currentCSV in inputList:
     for year, fragFile in fragTablesPath.items():
         open(fragFile.filePath,'w').close()
 
+    # Start (Refresh materialized view)
+    clockTimeMatView = time.time()
+
+    cur.execute("REFRESH MATERIALIZED VIEW intervention_daytime")
+    cur.execute("REFRESH MATERIALIZED VIEW intervention_nighttime")
+
+    # End (Refresh materialized view)
+    elapsedTimeMatView=elapsedTimeMatView + (time.time() - clockTimeMatView)
+
     conn.commit()
 
     # End (Loading)
@@ -742,19 +752,20 @@ for currentCSV in inputList:
     print("+ elapsedTimeTransformation: %s" % elapsedTimeTransformation)
     print("+ elapsedTimeLoading: %s" % elapsedTimeLoading)
     print("+ elapsedTimeOther: %s" % elapsedTimeOther)
+    print("+ elapsedTimeMatView: %s" % elapsedTimeMatView)
 
     print("Righe non valide: %s" % (cntNotValidRows))
     print("Righe valide: %s" % (cntValidRows))
-    print("+++")
 
     elapsedTimeExtraction=0
     elapsedTimeTransformation=0
     elapsedTimeLoading=0
     elapsedTimeOther=0
+    elapsedTimeMatView=0
     cntNotValidRows=0
     cntValidRows=0
     queryTester.computeAndWriteAvgs(csvIteration)
-
+    print("+++")
 '''
 for w in range(0,1):
     queryTester.computeAndWriteAvgs(w)
