@@ -376,6 +376,34 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
         writer.writerow(fakeRow)
     f.close()
 
+def cityValidation(cityName):
+    cityName = cityName.upper()
+
+    if cityName == "TI":
+        return "TREASURE"
+
+    elif cityName == "BN":
+        return "BRISBANE"
+
+    elif cityName == "DC":
+        return "DALY CITY"
+    elif cityName == "FM":
+        return "FORT MASON"
+    elif cityName == "HP":
+        return "HUNTERS POINT"
+    elif cityName == "PR":
+        return "PRESIDIO"
+    elif cityName == "SF":
+        return "SAN FRANCISCO"
+    elif cityName == "YB":
+        return "YERBA BUENA"
+    elif cityName == "TI":
+        return "TREASURE ISLAND"
+    elif cityName == "TREASURE ISLA":
+        return "TREASURE ISLAND"
+
+    return cityName;
+
 def rowValidation(row):
 
     if row[25] == '' or row[25] == 'None' or row[25] is None: #TODO Bisogna gestire una cosa oggi per ieri?
@@ -402,6 +430,8 @@ def rowValidation(row):
         return False
     if row[16]=="":     #Colonna 16: city
         return False
+    else:
+        row[16]=cityValidation(row[16])
     if row[17]=="":     #Colonna 17: zipcode
         return False
     if row[19]=="":     #Colonna 19: station area
