@@ -64,15 +64,16 @@ def createTables(cur,conn):
     cur.execute("CREATE TABLE IF NOT EXISTS dim_call_type(id_call_type smallint, call_type enum_call_type, call_type_group enum_call_type_group)")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_original(call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_type varchar(50),call_date timestamp without time zone, watch_date timestamp without time zone,received_DtTm timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,address varchar(50),city varchar(30),zipcode_of_incident varchar(10),battalion varchar(10),station_area varchar(20),box varchar(10),original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,call_type_group varchar(35),number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),neighborhood_district varchar(50),location_f varchar(50),rowid varchar(50),durationMinutes smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS dispatch911_dimensions(id_received_date integer,id_geo_place integer,id_duration smallint,id_responsibility integer,id_call_type smallint,call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_date timestamp without time zone, watch_date timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),location_f point,rowid varchar(50))")
-    cur.execute("create materialized view if not exists intervention_daytime as ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration)INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type	INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date  where recdate.hour_f in (1,2,3,4,5,6,7,8,9,10,11,12)))")
-    cur.execute("create materialized view if not exists intervention_nighttime as ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date	where recdate.hour_f in (13,14,15,16,17,18,19,20,21,22,23,24)))")
+    cur.execute("CREATE MATERIALIZED VIEW IF NOT EXISTS intervention_daytime AS ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration)INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type	INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date  where recdate.hour_f in (1,2,3,4,5,6,7,8,9,10,11,12)))")
+    cur.execute("CREATE MATERIALIZED VIEW IF NOT EXISTS intervention_nighttime AS ((select rowid, minutes, call_type, original_priority, final_priority from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date	where recdate.hour_f in (13,14,15,16,17,18,19,20,21,22,23,24)))")
+
     conn.commit()
 
 def putDurationTableInDictionary(dict):
     cur.execute("SELECT dim_duration.id_duration, dim_duration.minutes FROM dim_duration")
     queryRes=cur.fetchall()
     for k in queryRes:
-        dict[k[1]]=k[0]
+        dict[k[0]]=k[1]
     if len(queryRes)>0:
         return queryRes[len(queryRes)-1][0]
     else:
@@ -127,19 +128,12 @@ def putCallTypeTableInDictionary(dictCallType):
         return 0
 
 def getDimensionDurationRow(duration, tempTableDurata):
-    '''if (duration not in tempTableDurata.values()):
+    if (duration not in tempTableDurata.values()):
         tempTableDurata[len(tempTableDurata)] = duration
 
     for idd,dur in tempTableDurata.items():
         if dur==duration:
             return idd
-    '''
-    res=tempTableDurata.get(duration)
-    if res is None:
-        tempTableDurata[duration]=len(tempTableDurata)
-        return len(tempTableDurata)-1
-    else:
-        return res
 
 def getDimensionDateRow(recDate,tempTableDate):
     res=tempTableDate.get(recDate)
@@ -425,15 +419,15 @@ def rowValidation(row):
 def exportDimensionDurataToCsv(dict, path, lastID):
     with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
-            if v> lastID:
-                dimRow = [v,k, 0, 0, 0, 0]
-                if (k>=25):
+            if k> lastID or lastID==0:
+                dimRow = [k,v, 0, 0, 0, 0]
+                if (v>=25):
                     dimRow[5] = 1
-                if (k<=5):
+                if (v<=5):
                     dimRow[2] = 1
-                if (k<=15):
+                if (v<=15):
                     dimRow[3] = 1
-                if (k<=25):
+                if (v<=25):
                     dimRow[4] = 1
 
                 fl.write(repr(dimRow[0]) + ";" +  repr(dimRow[1]) + ";" + repr(dimRow[2]) + ";" + repr(dimRow[3]) + ";" + repr(dimRow[4]) + ";" +  repr(dimRow[5]) +"\n")
@@ -442,7 +436,7 @@ def exportDimensionDurataToCsv(dict, path, lastID):
 def exportDimensionDateToCsv(dict,path,lastID):
     with open(path,'w',newline='') as fl:
         for k,v in dict.items():
-            if v> lastID:
+            if v> lastID or lastID==0:
                 dt=datetime.datetime.strptime(k,"%Y-%m-%dT%H:%M:%S")
                 if (dt.month==12) or (dt.month==1) or (dt.month==2):
                     season=1
@@ -459,7 +453,7 @@ def exportDimensionGeoPlaceToCsv(dict, path, lastID):
     #tokenize value string
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v > lastID:
+            if v > lastID or lastID==0:
                 fieldsList=k.split("@")
                 fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2] + ";" + fieldsList[3] + "\n")
     fl.close()
@@ -467,7 +461,7 @@ def exportDimensionGeoPlaceToCsv(dict, path, lastID):
 def exportDimensionResponsibilityToCsv(dict,path,lastID):
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v > lastID:
+            if v > lastID or lastID==0:
                 fieldsList = k.split("@")
                 fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2]+ "\n")
     fl.close()
@@ -475,7 +469,7 @@ def exportDimensionResponsibilityToCsv(dict,path,lastID):
 def exportDimensionCallTypeToCsv(dict,path,lastID):
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v > lastID:
+            if v > lastID or lastID==0:
                 fieldList=k.split("@")
                 fl.write(repr(v)+";"+fieldList[0]+";"+fieldList[1]+"\n")
     fl.close()
@@ -568,13 +562,13 @@ inputList.append(inputCsvPath14)
 '''
 inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
-'''inputList.append(inputCsvPath17)
+'''
+inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
 inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPathTEST)
 '''
-#inputList.append(inputCsvPathTEST)
-
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -668,22 +662,22 @@ for currentCSV in inputList:
                     clockTimeOther = time.time()
 
                     idDuration = getDimensionDurationRow(manRow[34], tempTableDurata)
-                    if (idDuration == 0):
-                        idDuration += 1;
+                    #if (idDuration == 0):
+                    #    idDuration += 1;
                     idDate = getDimensionDateRow(manRow[6], tempTableDate)
-                    if (idDate == 0):
-                        idDate += 1;
+                    #if (idDate == 0):
+                    #    idDate += 1;
                     idGeoPlace = getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31],
                                                          tempTableGeoPlace)
-                    if (idGeoPlace == 0):
-                        idGeoPlace += 1;
+                    #if (idGeoPlace == 0):
+                    #    idGeoPlace += 1;
                     idResponsibility = getDimensionResponsibilityRow(manRow[20], manRow[19], manRow[18],
                                                                      tempTableResponsibility)
-                    if (idResponsibility == 0):
-                        idResponsibility += 1;
+                    #if (idResponsibility == 0):
+                    #    idResponsibility += 1;
                     idCallType = getDimensionCallTypeRow(manRow[3], manRow[25], tempTableCallType)
-                    if (idCallType == 0):
-                        idCallType += 1;
+                    #if (idCallType == 0):
+                    #    idCallType += 1;
                     elapsedTimeOther = elapsedTimeOther + (time.time() - clockTimeOther)
                     # End (Transformation phase)
 
@@ -734,11 +728,25 @@ for currentCSV in inputList:
     for y,fragFile in fragTablesPath.items():
         csvToPostgres(fragFile.filePath,fragFile.postgresTableName,cur,conn)
 
-    #open(factOriginal_csvPATH, 'w').close()
-    #open(factDimensions_csvPATH, 'w').close()
-    #open(inputCsvPathFAKE,'w').close()
+    open(dimDurationCSVPath, 'w').close()
+    open(dimDateCSVPath, 'w').close()
+    open(dimGeoPlaceCSVPath, 'w').close()
+    open(dimResponsibilityCSVPath, 'w').close()
+    open(dimCallTypeCSVPath, 'w').close()
+    open(factOriginal_csvPATH, 'w').close()
+    open(factDimensions_csvPATH, 'w').close()
+    open(inputCsvPathFAKE,'w').close()
     for year, fragFile in fragTablesPath.items():
         open(fragFile.filePath,'w').close()
+
+    # Start (Refresh materialized view)
+    clockTimeMatView = time.time()
+
+    cur.execute("REFRESH MATERIALIZED VIEW intervention_daytime")
+    cur.execute("REFRESH MATERIALIZED VIEW intervention_nighttime")
+
+    # End (Refresh materialized view)
+    elapsedTimeMatView=elapsedTimeMatView + (time.time() - clockTimeMatView)
 
     conn.commit()
 
@@ -749,23 +757,21 @@ for currentCSV in inputList:
     print("+ elapsedTimeTransformation: %s" % elapsedTimeTransformation)
     print("+ elapsedTimeLoading: %s" % elapsedTimeLoading)
     print("+ elapsedTimeOther: %s" % elapsedTimeOther)
+    print("+ elapsedTimeMatView: %s" % elapsedTimeMatView)
 
     print("Righe non valide: %s" % (cntNotValidRows))
     print("Righe valide: %s" % (cntValidRows))
-    print("+++")
 
     elapsedTimeExtraction=0
     elapsedTimeTransformation=0
     elapsedTimeLoading=0
     elapsedTimeOther=0
+    elapsedTimeMatView=0
     cntNotValidRows=0
     cntValidRows=0
     queryTester.computeAndWriteAvgs(csvIteration)
+    print("+++")
 
-'''
-for w in range(0,1):
-    queryTester.computeAndWriteAvgs(w)
-'''
 queryTester.csvQueryResults.close()
 
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
