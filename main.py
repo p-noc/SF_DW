@@ -25,17 +25,58 @@ class QueryTester:
     csvQueryResults=None
     resultsCsvWriter=None
     queryArray=[]
-    queryIterations = 10
+    queryIterations = 5
     csvQueryResultsPath = Path.cwd() / 'output/queryResults.csv'
 
     def __init__(self):
         self.csvQueryResults = open(self.csvQueryResultsPath, 'w', newline='')
         self.resultsCsvWriter = csv.writer(self.csvQueryResults, lineterminator='\n', delimiter=';')
 
+        # Query 1A (Dimensions)
+        self.queryArray.append("SELECT dat.year_f, geo.neighborhooods,count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' GROUP BY  dat.year_f, geo.neighborhooods")
+        # Query 1A (Original)
+        self.queryArray.append("SELECT date_part('year', received_dttm), neighborhood_district, count(*) FROM dispatch911_original WHERE call_type='HazMat' GROUP BY date_part('year', received_dttm), neighborhood_district")
+        # Query 1B (Dimensions)
+        self.queryArray.append("SELECT geo.neighborhooods, COUNT( distinct call_number) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' AND dat.year_f='2016' GROUP BY  geo.neighborhooods")
+        # Query 1B (Frag)
+        self.queryArray.append("select neighborhooods, count(distinct q1.call_number) from (SELECT * FROM dispatch911_frag_2000 as frag ) as q1 inner join (SELECT id_call_type,call_type from dim_call_type as calltype WHERE calltype.call_type='HazMat' ) as q2 on q1.id_call_type = q2.id_call_type inner join ( SELECT id_geo_place,neighborhooods FROM dim_geo_place )as q3 on q1.id_geo_place = q3.id_geo_place GROUP BY  q3.neighborhooods")
+
+        # Query 2 (No vista)
+        self.queryArray.append("select dayquery.call_type, (minutes_day), (minutes_night) from (select  call_type, avg(minutes) as minutes_day from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date where recdate.hour_f in (1,2,3,4,5,6,7,8,9,10,11,12) group by call_type ) AS dayquery inner join (select  call_type, avg(minutes) as minutes_night from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date where recdate.hour_f in (13,14,15,16,17,18,19,20,21,22,23,24) group by call_type ) AS nightquery on dayquery.call_type = nightquery.call_type")
+        # Query 2 (Vista)
+        self.queryArray.append("select dayquery.call_type, dayquery.avgminutes as dayavg, nightquery.avgminutes as nightavg from (select  call_type,  avg(minutes) as avgminutes from intervention_daytime group by call_type )AS dayquery inner join (select  call_type,  avg(minutes) as avgminutes from intervention_nighttime group by call_type )AS nightquery on dayquery.call_type = nightquery.call_type")
+
         # Query 3 (Original)
-        self.queryArray.append("(SELECT '1' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (12,1,2) AND call_type_group='Fire' GROUP BY neighborhood_district) union (SELECT '2' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (3,4,5) AND call_type_group='Fire' GROUP BY neighborhood_district) union (SELECT '3' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (6,7,8) AND call_type_group='Fire' GROUP BY neighborhood_district)		 union (SELECT '4' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (9,10,11) AND call_type_group='Fire' GROUP BY neighborhood_district) order by neighborhood_district, 1")
+        self.queryArray.append("(SELECT '1' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (12,1,2) AND call_type_group='Fire' GROUP BY neighborhood_district) union (SELECT '2' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (3,4,5) AND call_type_group='Fire' GROUP BY neighborhood_district) union (SELECT '3' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (6,7,8) AND call_type_group='Fire' GROUP BY neighborhood_district) union (SELECT '4' as season,neighborhood_district, count(*) FROM dispatch911_original WHERE date_part('month',received_dttm) IN (9,10,11) AND call_type_group='Fire' GROUP BY neighborhood_district)	 order by neighborhood_district, 1")
         # Query 3 (Dimensions)
-        self.queryArray.append(" SELECT dat.season, geo.neighborhooods, count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type_group='Fire' GROUP BY dat.season, geo.neighborhooods order by 2,1 ")
+        self.queryArray.append("SELECT dat.season, geo.neighborhooods, count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type_group='Fire' GROUP BY dat.season, geo.neighborhooods order by 2,1")
+
+        # Query 4 (Dimensions)
+        self.queryArray.append("select q2.original_priority,q2.call_type, avg(number_of_unit_dispatched) from (Select call_number, count(*) as number_of_unit_dispatched from dispatch911_dimensions group by call_number )as q1 inner join (Select distinct call_number, original_priority, call_type from dispatch911_dimensions as fact inner join dim_call_type as emer on fact.id_call_type = emer.id_call_type )as q2 on q1.call_number = q2.call_number group by q2.original_priority,q2.call_type order by 3")
+        # Query 4 (Original)
+        self.queryArray.append("select q2.original_priority,q2.call_type, avg(number_of_unit_dispatched) from (Select call_number, count(*) as number_of_unit_dispatched from dispatch911_original group by call_number)as q1 inner join (Select distinct call_number, original_priority, call_type from dispatch911_original as fact )as q2 on q1.call_number = q2.call_number group by q2.original_priority,q2.call_type order by 3")
+
+        # Query 5 (No vista)
+        self.queryArray.append("(select dayq.call_type, daycount, nightcount from (select call_type, count(*) as daycount from intervention_daytime where final_priority < original_priority group by call_type) as dayq inner join (select call_type, count(*) as nightcount from intervention_nighttime where final_priority < original_priority group by call_type) nightq on  dayq.call_type = nightq.call_type)")
+        # Query 5 (Vista)
+        self.queryArray.append("(select dayq.call_type, daycount, nightcount from 	(select call_type, count(*) as daycount	from dispatch911_dimensions  fact	INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type	INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date where recdate.hour_f in (1,2,3,4,5,6,7,8,9,10,11,12) and final_priority < original_priority group by call_type) as dayq	inner join (select call_type, count(*) as nightcount  from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date where recdate.hour_f in (13,14,15,16,17,18,19,20,21,22,23,24) and final_priority < original_priority group by call_type) nightq on  dayq.call_type = nightq.call_type)")
+
+        # Query 6 (Dimensions)
+        self.queryArray.append("select fact.original_priority, count(*) from dispatch911_dimensions as fact inner join dim_call_type as emergency on fact.id_call_type = emergency.id_call_type inner join dim_duration as dur on fact.id_duration = dur.id_duration where dur.lessfive=true group by fact.original_priority ")
+        # Query 6 (Original)
+        self.queryArray.append("select fact.original_priority, count(*) from dispatch911_original as fact where fact.durationminutes <= 5 group by fact.original_priority")
+
+        # Query 7 (Original)
+        self.queryArray.append("select fact.call_type, count(*), avg(fact.durationminutes) from dispatch911_original as fact where fact.battalion = 'B01' group by fact.call_type")
+        # Query 7 (Dimension)
+        self.queryArray.append("select emergency.call_type, count(*), avg(dur.minutes) from dispatch911_dimensions as fact inner join dim_call_type as emergency on fact.id_call_type = emergency.id_call_type inner join dim_duration as dur on fact.id_duration = dur.id_duration inner join dim_responsibility as resp on fact.id_responsibility = resp.id_responsibility where resp.battalion = 'B01' group by emergency.call_type")
+
+        # Query 8 (Dimension)
+        self.queryArray.append("select box, count (distinct call_number) as number_of_calls from (	 (select * from dispatch911_dimensions as fact) as q1 inner join (select id_geo_place from dim_geo_place as geo where geo.city='SAN FRANCISCO') as q2 on q1.id_geo_place = q2.id_geo_place inner join (select recdate.id_received_date from dim_received_date as recdate where recdate.year_f ='2015' )as q2bis on q1.id_received_date = q2bis.id_received_date ) inner join ( select id_responsibility, box from dim_responsibility as resp ) as q3 on q1.id_responsibility = q3.id_responsibility group by box order by 2 desc")
+        # Query 8 (Frag)
+        self.queryArray.append("select box, count (distinct call_number) as number_of_calls from  ((select * from dispatch911_frag_2000 as fact) as q1 inner join (select id_geo_place from dim_geo_place as geo where geo.city='SAN FRANCISCO') as q2 on q1.id_geo_place = q2.id_geo_place ) inner join (  select id_responsibility, box from dim_responsibility as resp ) as q3 on q1.id_responsibility = q3.id_responsibility group by box order by 2 desc")
+        # Query 8 (Original)
+        self.queryArray.append("select box, count (distinct call_number) as number_of_calls from dispatch911_original as fact where city='SAN FRANCISCO' and date_part('year', received_dttm) = '2015' group by box order by 2 desc")
 
     def computeAndWriteAvgs(self, block):
         queryIndex=1
@@ -574,12 +615,13 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-'''
+
 inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
 inputList.append(inputCsvPath4)
 inputList.append(inputCsvPath5)
+'''
 inputList.append(inputCsvPath6)
 inputList.append(inputCsvPath7)
 inputList.append(inputCsvPath8)
@@ -589,10 +631,8 @@ inputList.append(inputCsvPath11)
 inputList.append(inputCsvPath12)
 inputList.append(inputCsvPath13)
 inputList.append(inputCsvPath14)
-'''
 inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
-'''
 inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
