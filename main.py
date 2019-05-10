@@ -419,7 +419,7 @@ def rowValidation(row):
 def exportDimensionDurataToCsv(dict, path, lastID):
     with open(path, 'w',newline='') as fl:
         for k,v in dict.items():
-            if k> lastID:
+            if k> lastID or lastID==0:
                 dimRow = [k,v, 0, 0, 0, 0]
                 if (v>=25):
                     dimRow[5] = 1
@@ -436,7 +436,7 @@ def exportDimensionDurataToCsv(dict, path, lastID):
 def exportDimensionDateToCsv(dict,path,lastID):
     with open(path,'w',newline='') as fl:
         for k,v in dict.items():
-            if v> lastID:
+            if v> lastID or lastID==0:
                 dt=datetime.datetime.strptime(k,"%Y-%m-%dT%H:%M:%S")
                 if (dt.month==12) or (dt.month==1) or (dt.month==2):
                     season=1
@@ -453,7 +453,7 @@ def exportDimensionGeoPlaceToCsv(dict, path, lastID):
     #tokenize value string
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v > lastID:
+            if v > lastID or lastID==0:
                 fieldsList=k.split("@")
                 fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2] + ";" + fieldsList[3] + "\n")
     fl.close()
@@ -461,7 +461,7 @@ def exportDimensionGeoPlaceToCsv(dict, path, lastID):
 def exportDimensionResponsibilityToCsv(dict,path,lastID):
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v > lastID:
+            if v > lastID or lastID==0:
                 fieldsList = k.split("@")
                 fl.write(repr(v) + ";" + fieldsList[0] + ";" + fieldsList[1] + ";" + fieldsList[2]+ "\n")
     fl.close()
@@ -469,7 +469,7 @@ def exportDimensionResponsibilityToCsv(dict,path,lastID):
 def exportDimensionCallTypeToCsv(dict,path,lastID):
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
-            if v > lastID:
+            if v > lastID or lastID==0:
                 fieldList=k.split("@")
                 fl.write(repr(v)+";"+fieldList[0]+";"+fieldList[1]+"\n")
     fl.close()
@@ -557,12 +557,12 @@ inputList.append(inputCsvPath9)
 inputList.append(inputCsvPath10)
 inputList.append(inputCsvPath11)
 inputList.append(inputCsvPath12)
-'''
 inputList.append(inputCsvPath13)
 inputList.append(inputCsvPath14)
 '''
 inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
+'''
 inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
@@ -662,22 +662,22 @@ for currentCSV in inputList:
                     clockTimeOther = time.time()
 
                     idDuration = getDimensionDurationRow(manRow[34], tempTableDurata)
-                    if (idDuration == 0):
-                        idDuration += 1;
+                    #if (idDuration == 0):
+                    #    idDuration += 1;
                     idDate = getDimensionDateRow(manRow[6], tempTableDate)
-                    if (idDate == 0):
-                        idDate += 1;
+                    #if (idDate == 0):
+                    #    idDate += 1;
                     idGeoPlace = getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31],
                                                          tempTableGeoPlace)
-                    if (idGeoPlace == 0):
-                        idGeoPlace += 1;
+                    #if (idGeoPlace == 0):
+                    #    idGeoPlace += 1;
                     idResponsibility = getDimensionResponsibilityRow(manRow[20], manRow[19], manRow[18],
                                                                      tempTableResponsibility)
-                    if (idResponsibility == 0):
-                        idResponsibility += 1;
+                    #if (idResponsibility == 0):
+                    #    idResponsibility += 1;
                     idCallType = getDimensionCallTypeRow(manRow[3], manRow[25], tempTableCallType)
-                    if (idCallType == 0):
-                        idCallType += 1;
+                    #if (idCallType == 0):
+                    #    idCallType += 1;
                     elapsedTimeOther = elapsedTimeOther + (time.time() - clockTimeOther)
                     # End (Transformation phase)
 
@@ -728,6 +728,11 @@ for currentCSV in inputList:
     for y,fragFile in fragTablesPath.items():
         csvToPostgres(fragFile.filePath,fragFile.postgresTableName,cur,conn)
 
+    open(dimDurationCSVPath, 'w').close()
+    open(dimDateCSVPath, 'w').close()
+    open(dimGeoPlaceCSVPath, 'w').close()
+    open(dimResponsibilityCSVPath, 'w').close()
+    open(dimCallTypeCSVPath, 'w').close()
     open(factOriginal_csvPATH, 'w').close()
     open(factDimensions_csvPATH, 'w').close()
     open(inputCsvPathFAKE,'w').close()
@@ -766,10 +771,7 @@ for currentCSV in inputList:
     cntValidRows=0
     queryTester.computeAndWriteAvgs(csvIteration)
     print("+++")
-'''
-for w in range(0,1):
-    queryTester.computeAndWriteAvgs(w)
-'''
+
 queryTester.csvQueryResults.close()
 
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
