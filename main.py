@@ -25,7 +25,7 @@ class QueryTester:
     csvQueryResults=None
     resultsCsvWriter=None
     queryArray=[]
-    queryIterations = 5
+    queryIterations = 1
     csvQueryResultsPath = Path.cwd() / 'output/queryResults.csv'
 
     def __init__(self):
@@ -95,7 +95,7 @@ class QueryTester:
 
 def createTables(cur,conn):
     #cur.execute("CREATE TYPE enum_call_type AS ENUM ('Administrative','Aircraft Emergency','Alarms','Assist Police','Citizen Assist / Service Call','Confined Space / Structure Collapse','Electrical Hazard','Elevator / Escalator Rescue','Explosion','Extrication / Entrapped (Machinery  Vehicle)','Fuel Spill','Gas Leak (Natural and LP Gases)','HazMat','High Angle Rescue','Industrial Accidents','Lightning Strike (Investigation)','Marine Fire','Medical Incident','Mutual Aid / Assist Outside Agency','Odor (Strange / Unknown)','Oil Spill','Other','Outside Fire','Smoke Investigation (Outside)','Structure Fire','Suspicious Package','Traffic Collision','Train / Rail Fire','Train / Rail Incident','Transfer','Vehicle Fire','Water Rescue','Watercraft in Distress')")
-    #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm')")
+    #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm','NotAssigned')")
 
     #cur.execute("DROP TABLE IF NOT EXISTS dispatch911_original,dim_received_date,dim_duration,dim_geo_place,dim_responsibility,dim_call_type,dispatch911_dimensions")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_received_date(id_received_date integer NOT NULL,received_DtTm timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
@@ -448,7 +448,7 @@ def cityValidation(cityName):
 def rowValidation(row):
 
     if row[25] == '' or row[25] == 'None' or row[25] is None: #TODO Bisogna gestire una cosa oggi per ieri?
-        row[25] = 'Alarm'
+        row[25] = 'NotAssigned'
         #return False
     if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
         return False
@@ -617,18 +617,20 @@ inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 inputList = []
 
 inputList.append(inputCsvPath1)
+'''
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
 inputList.append(inputCsvPath4)
 inputList.append(inputCsvPath5)
-'''
 inputList.append(inputCsvPath6)
 inputList.append(inputCsvPath7)
 inputList.append(inputCsvPath8)
+'''
 inputList.append(inputCsvPath9)
 inputList.append(inputCsvPath10)
 inputList.append(inputCsvPath11)
 inputList.append(inputCsvPath12)
+'''
 inputList.append(inputCsvPath13)
 inputList.append(inputCsvPath14)
 inputList.append(inputCsvPath15)
@@ -670,7 +672,8 @@ callTypeGroupDictionary={
                             0:'Fire',
                             1:'Potentially Life-Threatening',
                             2:'Non Life-threatening',
-                            3:'Alarm'
+                            3:'Alarm',
+                            4:'NotAssigned'
     }
 
 tempTableDurata={}
