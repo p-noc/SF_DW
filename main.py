@@ -345,38 +345,6 @@ import string
 def randomStr(size=6, chars=string.ascii_uppercase + string.digits+string.ascii_lowercase):
     return ''.join(random.choice(chars) for x in range(size))
 
-'''
-def generateFakeRows(numOfRows=200):
-    fakeStr = 'FAKE'
-    legalPriorities=[2,3]
-
-    outputFakeRows = Path.cwd() / 'datasource/fakeRows.csv'
-
-    f=codecs.open(outputFakeRows, 'w', encoding='utf-16-le')
-    #f = open(outputFakeRows, 'a', newline='')
-    writer = csv.writer(f, lineterminator='\n', delimiter=',')
-
-    for i in range(numOfRows):
-        fakeRow = [None] * 35
-        fakeRow[0]=fakeStr+randomStr(15) #call_number varchar(20)
-        fakeRow[1]=fakeStr+randomStr(5) #unit_id varchar(10)
-        fakeRow[31]=fakeStr+randomStr(45) #neighboorhood district varchar(50)
-        fakeRow[21]=random.choice(legalPriorities)
-        fakeRow[22]=random.choice(legalPriorities)
-        fakeRow[23]=random.choice(legalPriorities)
-        fakeRow[15]=fakeStr+randomStr(45) #address varchar50
-        fakeRow[16] = fakeStr + randomStr(25)  # city vc30
-        fakeRow[17] = randomStr(5,string.digits)  # zipcode vc10 #TODO guarantee conformity?
-        fakeRow[19] = fakeStr + randomStr(15)  # station area vc20
-        fakeRow[18] = randomStr(5)#battalion varchar5
-        fakeRow[20] = randomStr(5) #box varchar5
-        fakeRow[25] = 'Alarm'  # call type group enum/varchar?
-        fakeRow[3] = 'Other'  # call type  enum/varchar?
-
-        writer.writerow(fakeRow)
-    f.close()
-'''
-
 def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableResponsibility, tableCallType, numOfRows=100):
     fakeStr = 'FAKE'
     legalPriorities = [2, 3]
@@ -417,15 +385,18 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
         writer.writerow(fakeRow)
     f.close()
 
+def createCallTypeDictionary():
+    dictCallType={'Administrative':'Fire','Aircraft Emergency':'Alarm','Alarms':'Alarm','Assist Police':'Alarm','Citizen Assist / Service Call':'Alarm','Confined Space / Structure Collapse':'Fire','Electrical Hazard':'Alarm','Elevator / Escalator Rescue':'Alarm','Explosion':'Fire','Extrication / Entrapped (Machinery  Vehicle)':'Fire','Fuel Spill':'Alarm','Gas Leak (Natural and LP Gases)':'Alarm','HazMat':'Alarm','HazMat':'Fire','High Angle Rescue':'Fire','Industrial Accidents':'Fire','Marine Fire':'Fire','Medical Incident':'Alarm','Medical Incident':'Non Life-threatening','Medical Incident':'Potentially Life-Threatening','Mutual Aid / Assist Outside Agency':'Fire','Odor (Strange / Unknown)':'Alarm','Odor (Strange / Unknown)':'Fire','Oil Spill':'Alarm','Other':'Alarm','Other':'Non Life-threatening','Other':'Potentially Life-Threatening','Outside Fire':'Alarm','Outside Fire':'Fire','Smoke Investigation (Outside)':'Alarm','Structure Fire':'Alarm','Structure Fire':'Fire','Structure Fire':'Potentially Life-Threatening','Suspicious Package':'Fire','Traffic Collision':'Non Life-threatening','Traffic Collision':'Potentially Life-Threatening','Train / Rail Fire':'Fire','Train / Rail Incident':'Fire','Vehicle Fire':'Alarm','Vehicle Fire':'Fire','Water Rescue':'Fire','Water Rescue':'Potentially Life-Threatening','Watercraft in Distress':'Alarm','Watercraft in Distress':'Fire'}
+
+    return dictCallType;
+
 def cityValidation(cityName):
     cityName = cityName.upper()
 
     if cityName == "TI":
         return "TREASURE"
-
     elif cityName == "BN":
         return "BRISBANE"
-
     elif cityName == "DC":
         return "DALY CITY"
     elif cityName == "FM":
@@ -442,14 +413,14 @@ def cityValidation(cityName):
         return "TREASURE ISLAND"
     elif cityName == "TREASURE ISLA":
         return "TREASURE ISLAND"
-
     return cityName;
 
-def rowValidation(row):
 
-    if row[25] == '' or row[25] == 'None' or row[25] is None: #TODO Bisogna gestire una cosa oggi per ieri?
-        row[25] = 'NotAssigned'
-        #return False
+
+def rowValidation(row,dictCallType):
+
+    if row[25] == '' or row[25] == 'None' or row[25] is None:
+        row[25] = dictCallType.get(row[3])
     if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
         return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
@@ -584,8 +555,6 @@ def openFragmentationFiles (fragTablesPath):
         fragFile.fileDesc = open(fragFile.filePath, 'w', newline='')
 
 
-
-
 postgresConnectionString = "dbname=test user=postgres password=1234 host=localhost"
 
 inputCsvPath1 = Path.cwd() / 'datasource/01-fire-department-calls-for-service.csv'
@@ -625,7 +594,7 @@ inputList.append(inputCsvPath5)
 inputList.append(inputCsvPath6)
 inputList.append(inputCsvPath7)
 inputList.append(inputCsvPath8)
-'''
+
 inputList.append(inputCsvPath9)
 inputList.append(inputCsvPath10)
 inputList.append(inputCsvPath11)
@@ -637,6 +606,7 @@ inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
 inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
+'''
 inputList.append(inputCsvPath19)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathTEST)
@@ -684,9 +654,9 @@ tempTableCallType={}
 fragTablesPath={}
 
 
+dictCallType=createCallTypeDictionary()
 
 # Last event date
-
 # lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
 queryTester = QueryTester()
@@ -718,7 +688,7 @@ for currentCSV in inputList:
         cnt = 0
         for row in reader:
             if cnt != 0:
-                valResult=rowValidation(row)
+                valResult=rowValidation(row,dictCallType)
                 if valResult:
                     cntValidRows=cntValidRows+1
 
