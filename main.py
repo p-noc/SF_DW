@@ -78,7 +78,7 @@ class QueryTester:
         # Query 8 (Original)
         self.queryArray.append("select box, count (distinct call_number) as number_of_calls from dispatch911_original as fact where city='SAN FRANCISCO' and date_part('year', received_dttm) = '2015' group by box order by 2 desc")
 
-    def computeAndWriteAvgs(self, block):
+    def computeAndWriteAvgs(self, block, index):
         queryIndex=1
         for q in self.queryArray:
             queryTime = 0
@@ -88,7 +88,7 @@ class QueryTester:
                 queryTime=queryTime+(time.time()-query_start_time)
                 #print(queryTime/(i+1))
 
-            outResultRow=[block,queryIndex,queryTime/self.queryIterations]
+            outResultRow=[block,queryIndex,index,queryTime/self.queryIterations]
             self.resultsCsvWriter.writerow(outResultRow)
             queryIndex=queryIndex+1
             print(outResultRow)
@@ -386,7 +386,7 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
     f.close()
 
 def createCallTypeDictionary():
-    dictCallType={'Administrative':'Fire','Aircraft Emergency':'Alarm','Alarms':'Alarm','Assist Police':'Alarm','Citizen Assist / Service Call':'Alarm','Confined Space / Structure Collapse':'Fire','Electrical Hazard':'Alarm','Elevator / Escalator Rescue':'Alarm','Explosion':'Fire','Extrication / Entrapped (Machinery  Vehicle)':'Fire','Fuel Spill':'Alarm','Gas Leak (Natural and LP Gases)':'Alarm','HazMat':'Alarm','HazMat':'Fire','High Angle Rescue':'Fire','Industrial Accidents':'Fire','Marine Fire':'Fire','Medical Incident':'Alarm','Medical Incident':'Non Life-threatening','Medical Incident':'Potentially Life-Threatening','Mutual Aid / Assist Outside Agency':'Fire','Odor (Strange / Unknown)':'Alarm','Odor (Strange / Unknown)':'Fire','Oil Spill':'Alarm','Other':'Alarm','Other':'Non Life-threatening','Other':'Potentially Life-Threatening','Outside Fire':'Alarm','Outside Fire':'Fire','Smoke Investigation (Outside)':'Alarm','Structure Fire':'Alarm','Structure Fire':'Fire','Structure Fire':'Potentially Life-Threatening','Suspicious Package':'Fire','Traffic Collision':'Non Life-threatening','Traffic Collision':'Potentially Life-Threatening','Train / Rail Fire':'Fire','Train / Rail Incident':'Fire','Vehicle Fire':'Alarm','Vehicle Fire':'Fire','Water Rescue':'Fire','Water Rescue':'Potentially Life-Threatening','Watercraft in Distress':'Alarm','Watercraft in Distress':'Fire'}
+    dictCallType={'Administrative':'Fire','Aircraft Emergency':'Alarm','Alarms':'Alarm','Assist Police':'Alarm','Citizen Assist / Service Call':'Alarm','Confined Space / Structure Collapse':'Fire','Electrical Hazard':'Alarm','Elevator / Escalator Rescue':'Alarm','Explosion':'Fire','Extrication / Entrapped (Machinery  Vehicle)':'Fire','Fuel Spill':'Alarm','Gas Leak (Natural and LP Gases)':'Alarm','HazMat':'Alarm','HazMat':'Fire','High Angle Rescue':'Fire','Industrial Accidents':'Fire','Marine Fire':'Fire','Medical Incident':'Alarm','Medical Incident':'Non Life-threatening','Medical Incident':'Potentially Life-Threatening','Mutual Aid / Assist Outside Agency':'Fire','Odor (Strange / Unknown)':'Alarm','Odor (Strange / Unknown)':'Fire','Oil Spill':'Alarm','Other':'Alarm','Other':'Non Life-threatening','Other':'Potentially Life-Threatening','Outside Fire':'Alarm','Outside Fire':'Fire','Smoke Investigation (Outside)':'Alarm','Structure Fire':'Alarm','Structure Fire':'Fire','Structure Fire':'Potentially Life-Threatening','Suspicious Package':'Fire','Traffic Collision':'Non Life-threatening','Traffic Collision':'Potentially Life-Threatening','Train / Rail Fire':'Fire','Train / Rail Incident':'Fire','Vehicle Fire':'Alarm','Vehicle Fire':'Fire','Water Rescue':'Fire','Water Rescue':'Potentially Life-Threatening','Watercraft in Distress':'Alarm','Watercraft in Distress':'Fire','Extrication / Entrapped (Machinery, Vehicle)':'Alarm'}
 
     return dictCallType;
 
@@ -420,7 +420,10 @@ def cityValidation(cityName):
 def rowValidation(row,dictCallType):
 
     if row[25] == '' or row[25] == 'None' or row[25] is None:
-        row[25] = dictCallType.get(row[3])
+        if(dictCallType.get(row[3] is not None)):
+            row[25] = dictCallType.get(row[3])
+        else:
+            row[25]= 'NotAssigned'
     if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
         return False
     if row[21]=="":     #Colonna 21: priorità, non può essere nulla
@@ -584,29 +587,27 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-
-inputList.append(inputCsvPath1)
 '''
+inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
+'''
 inputList.append(inputCsvPath4)
 inputList.append(inputCsvPath5)
 inputList.append(inputCsvPath6)
 inputList.append(inputCsvPath7)
 inputList.append(inputCsvPath8)
-
 inputList.append(inputCsvPath9)
+'''
 inputList.append(inputCsvPath10)
 inputList.append(inputCsvPath11)
 inputList.append(inputCsvPath12)
-'''
 inputList.append(inputCsvPath13)
 inputList.append(inputCsvPath14)
 inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
 inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
-'''
 inputList.append(inputCsvPath19)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathTEST)
@@ -812,7 +813,7 @@ for currentCSV in inputList:
     elapsedTimeMatView=0
     cntNotValidRows=0
     cntValidRows=0
-    queryTester.computeAndWriteAvgs(csvIteration)
+    queryTester.computeAndWriteAvgs(csvIteration,'NoIndex')
     print("+++")
 
 queryTester.csvQueryResults.close()
