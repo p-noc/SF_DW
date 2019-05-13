@@ -93,6 +93,20 @@ class QueryTester:
             queryIndex=queryIndex+1
             print(outResultRow)
 
+    def createIndex(self):
+        cur.execute("CREATE INDEX  dispatch_date_ind on dispatch911_dimensions (id_received_date);")
+        cur.execute("CREATE INDEX  dispatch_date_geo on dispatch911_dimensions (id_geo_place);")
+        cur.execute("CREATE INDEX  dispatch_date_dur on dispatch911_dimensions (id_duration);")
+        cur.execute("CREATE INDEX  dispatch_date_resp on dispatch911_dimensions (id_responsibility);")
+        cur.execute("CREATE INDEX  dispatch_date_calltype on dispatch911_dimensions (id_call_type);")
+
+    def dropIndex(self):
+        cur.execute("DROP INDEX dispatch_date_ind;")
+        cur.execute("DROP INDEX dispatch_date_geo;")
+        cur.execute("DROP INDEX dispatch_date_dur;")
+        cur.execute("DROP INDEX dispatch_date_resp;")
+        cur.execute("DROP INDEX dispatch_date_calltype;")
+
 def createTables(cur,conn):
     #cur.execute("CREATE TYPE enum_call_type AS ENUM ('Administrative','Aircraft Emergency','Alarms','Assist Police','Citizen Assist / Service Call','Confined Space / Structure Collapse','Electrical Hazard','Elevator / Escalator Rescue','Explosion','Extrication / Entrapped (Machinery  Vehicle)','Fuel Spill','Gas Leak (Natural and LP Gases)','HazMat','High Angle Rescue','Industrial Accidents','Lightning Strike (Investigation)','Marine Fire','Medical Incident','Mutual Aid / Assist Outside Agency','Odor (Strange / Unknown)','Oil Spill','Other','Outside Fire','Smoke Investigation (Outside)','Structure Fire','Suspicious Package','Traffic Collision','Train / Rail Fire','Train / Rail Incident','Transfer','Vehicle Fire','Water Rescue','Watercraft in Distress')")
     #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm','NotAssigned')")
@@ -591,14 +605,12 @@ inputList = []
 inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
-'''
 inputList.append(inputCsvPath4)
 inputList.append(inputCsvPath5)
 inputList.append(inputCsvPath6)
 inputList.append(inputCsvPath7)
 inputList.append(inputCsvPath8)
 inputList.append(inputCsvPath9)
-'''
 inputList.append(inputCsvPath10)
 inputList.append(inputCsvPath11)
 inputList.append(inputCsvPath12)
@@ -607,7 +619,9 @@ inputList.append(inputCsvPath14)
 inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
 inputList.append(inputCsvPath17)
+'''
 inputList.append(inputCsvPath18)
+'''
 inputList.append(inputCsvPath19)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathTEST)
@@ -626,12 +640,14 @@ clockTimeTransformation=0
 clockTimeLoading=0
 clockTimeMatView=0
 clockTimeOther=0
+clockTimeIndex=0
 
 elapsedTimeExtraction=0
 elapsedTimeTransformation=0
 elapsedTimeLoading=0
 elapsedTimeMatView=0
 elapsedTimeOther=0
+elapsedTimeIndex=0
 
 conn = psycopg2.connect(postgresConnectionString)
 cur = conn.cursor()
@@ -797,23 +813,36 @@ for currentCSV in inputList:
     # End (Loading)
     elapsedTimeLoading = elapsedTimeLoading + (time.time() - clockTimeLoading)
     print("Fine ETL (sec): %s" % (time.time() - start_local_time))
+
+    queryTester.computeAndWriteAvgs(csvIteration,'NoIndex')
+
+    #Creating index (Start)
+    clockTimeIndex=time.time()
+    queryTester.createIndex()
+    elapsedTimeIndex=time.time() - clockTimeIndex
+
+    queryTester.computeAndWriteAvgs(csvIteration,'Index')
+    queryTester.dropIndex()
+
     print("+ elapsedTimeExtraction: %s" % elapsedTimeExtraction)
     print("+ elapsedTimeTransformation: %s" % elapsedTimeTransformation)
     print("+ elapsedTimeLoading: %s" % elapsedTimeLoading)
     print("+ elapsedTimeOther: %s" % elapsedTimeOther)
     print("+ elapsedTimeMatView: %s" % elapsedTimeMatView)
+    print("+ elapsedTimeIndex: %s" % elapsedTimeIndex)
 
     print("Righe non valide: %s" % (cntNotValidRows))
     print("Righe valide: %s" % (cntValidRows))
 
-    elapsedTimeExtraction=0
-    elapsedTimeTransformation=0
-    elapsedTimeLoading=0
-    elapsedTimeOther=0
-    elapsedTimeMatView=0
-    cntNotValidRows=0
-    cntValidRows=0
-    queryTester.computeAndWriteAvgs(csvIteration,'NoIndex')
+    elapsedTimeExtraction = 0
+    elapsedTimeTransformation = 0
+    elapsedTimeLoading = 0
+    elapsedTimeOther = 0
+    elapsedTimeMatView = 0
+    cntNotValidRows = 0
+    cntValidRows = 0
+    elapsedTimeIndex = 0
+
     print("+++")
 
 queryTester.csvQueryResults.close()
