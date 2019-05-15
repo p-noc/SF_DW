@@ -611,12 +611,12 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
+
 inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
 inputList.append(inputCsvPath4)
 inputList.append(inputCsvPath5)
-''' 
 inputList.append(inputCsvPath6)
 inputList.append(inputCsvPath7)
 inputList.append(inputCsvPath8)
@@ -632,6 +632,9 @@ inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
 inputList.append(inputCsvPath19)
 inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPathFAKE)
+'''
 inputList.append(inputCsvPathTEST)
 '''
 
@@ -700,7 +703,7 @@ for currentCSV in inputList:
 
     if currentCSV==inputCsvPathFAKE:
         generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility,
-                                   tempTableCallType, 5000)
+                                   tempTableCallType, 1000)
 
     start_local_time=time.time()    #TODO se mettiamo i clock per ogni evento tipo Ext, Transf, Load, questo ci vuole?
     clockTimeExtraction=time.time()    # Start (Extraction phase)
