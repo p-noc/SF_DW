@@ -90,7 +90,7 @@ class QueryTester:
                     queryTime=queryTime+(time.time()-query_start_time)
                 #print(queryTime/(i+1))
 
-            outResultRow=[block, queryIndex, usingIndex, queryTime / self.queryIterations * 1000]
+            outResultRow=[block, queryIndex, usingIndex, queryTime / (self.queryIterations-2) * 1000]
             self.resultsCsvWriter.writerow(outResultRow)
             queryIndex=queryIndex+1
             print(outResultRow)
@@ -185,14 +185,6 @@ def putCallTypeTableInDictionary(dictCallType):
         return 0
 
 def getDimensionDurationRow(duration, tempTableDurata):
-    '''
-    if (duration not in tempTableDurata.values()):
-        tempTableDurata[len(tempTableDurata)] = duration
-
-    for idd,dur in tempTableDurata.items():
-        if dur==duration:
-            return idd
-    '''
     res=tempTableDurata.get(duration)
     if res is None:
         tempTableDurata[duration] = len(tempTableDurata)
@@ -290,10 +282,6 @@ def rowManipulation(row,cur):
     d2 = datetime.datetime.strptime(on_scene_dtTm, "%Y-%m-%dT%H:%M:%S")
     durationInMinutes = d2-d1
     durationInMinutes =(int(durationInMinutes.seconds/60))
-
-    #
-    if (call_type_group==''):
-        call_type_group=callTypeGroupDictionary.get(random.randint(0,3))
 
     call_type=call_type.replace(","," ")
 
@@ -611,7 +599,7 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-
+'''
 inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
@@ -630,7 +618,10 @@ inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
 inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
-inputList.append(inputCsvPath19)
+#inputList.append(inputCsvPath19)
+'''
+inputList.append(inputCsvPathFAKE)
+inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathFAKE)
@@ -645,6 +636,7 @@ dimResponsibilityCSVPath= Path.cwd() / 'output/dim_responsibility.csv'
 dimCallTypeCSVPath= Path.cwd() / 'output/dim_call_type.csv'
 factOriginal_csvPATH = Path.cwd() / 'output/factOriginal.csv'
 factDimensions_csvPATH = Path.cwd() / 'output/factDimensions.csv'
+csvTimeResultsPath = Path.cwd() / 'output/timeResults.csv'
 
 clockTimeExtraction=0
 clockTimeTransformation=0
@@ -681,11 +673,10 @@ tempTableResponsibility={}
 tempTableCallType={}
 fragTablesPath={}
 
+csvTimeResults = open(csvTimeResultsPath, 'w', newline='')
+timeCsvWriter = csv.writer(csvTimeResults, lineterminator='\n', delimiter=';')
 
 dictCallType=createCallTypeDictionary()
-
-# Last event date
-# lastEventDate=lastEventDate[0][0].strftime("%Y-%m-%dT%H:%M:%S")
 
 queryTester = QueryTester()
 
@@ -703,7 +694,7 @@ for currentCSV in inputList:
 
     if currentCSV==inputCsvPathFAKE:
         generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility,
-                                   tempTableCallType, 1000)
+                                   tempTableCallType, 1000000)
 
     start_local_time=time.time()    #TODO se mettiamo i clock per ogni evento tipo Ext, Transf, Load, questo ci vuole?
     clockTimeExtraction=time.time()    # Start (Extraction phase)
@@ -845,6 +836,10 @@ for currentCSV in inputList:
     print("Righe non valide: %s" % (cntNotValidRows))
     print("Righe valide: %s" % (cntValidRows))
 
+    outTimeRow=[csvIteration, elapsedTimeExtraction, elapsedTimeTransformation, elapsedTimeLoading, elapsedTimeMatView,elapsedTimeIndex,cntNotValidRows,cntValidRows]
+    timeCsvWriter.writerow(outTimeRow)
+
+
     elapsedTimeExtraction = 0
     elapsedTimeTransformation = 0
     elapsedTimeLoading = 0
@@ -857,6 +852,7 @@ for currentCSV in inputList:
     print("+++")
 
 queryTester.csvQueryResults.close()
+csvTimeResults.close()
 
 print("Tempo totale per tutti i file (sec): %s" % (time.time() - start_global_time))
 
