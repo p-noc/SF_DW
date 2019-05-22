@@ -7,6 +7,7 @@ import ast
 from pathlib import Path
 import random
 import sys
+import string
 
 cntNotValidRows=0
 cntValidRows=0
@@ -20,7 +21,6 @@ class FragFile:
         query = 'CREATE TABLE IF NOT EXISTS ' + self.postgresTableName + '(id_received_date integer,id_geo_place integer,id_duration smallint,id_responsibility integer,id_call_type smallint,call_number varchar(20),unit_id varchar(10),incident_number varchar(10),call_date timestamp without time zone, watch_date timestamp without time zone,entry_DtTm timestamp without time zone,dispatch_DtTm timestamp without time zone,response_DtTm timestamp without time zone,on_scene_DtTm timestamp without time zone,transport_DtTm timestamp without time zone,hospital_DtTm timestamp without time zone,call_final_disposition varchar(30),available_DtTm timestamp without time zone,original_priority varchar(1),priority varchar(1),final_priority varchar(1),ALS_unit bool,number_of_alarms smallint,unit_type varchar(20),unit_sequence_in_call_dispatch smallint,fire_prevenction_district varchar(10),supervisor_district varchar(20),location_f point,rowid varchar(50))'
         cur.execute(query)
 
-# Class for query testing
 class QueryTester:
     csvQueryResults=None
     resultsCsvWriter=None
@@ -38,9 +38,9 @@ class QueryTester:
         self.queryArray.append("SELECT dat.year_f, geo.neighborhooods,count(*) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' GROUP BY  dat.year_f, geo.neighborhooods")
 
          # Query 1B (Dimensions) #3
-        self.queryArray.append("SELECT geo.neighborhooods, COUNT( distinct call_number) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' AND dat.year_f='2016' GROUP BY  geo.neighborhooods")
+        self.queryArray.append("SELECT geo.neighborhooods, COUNT( distinct call_number) FROM dispatch911_dimensions as dis INNER JOIN dim_geo_place as geo ON dis.id_geo_place=geo.id_geo_place INNER JOIN dim_call_type as callt ON callt.id_call_type=dis.id_call_type INNER JOIN dim_received_date as dat ON dat.id_received_date=dis.id_received_date WHERE callt.call_type='HazMat' AND dat.year_f in ('2010','2011','2012','2013','2014','2015') GROUP BY  geo.neighborhooods")
         # Query 1B (Frag)       #4
-        self.queryArray.append("select neighborhooods, count(distinct q1.call_number) from (SELECT * FROM dispatch911_frag_2000 as frag ) as q1 inner join (SELECT id_call_type,call_type from dim_call_type as calltype WHERE calltype.call_type='HazMat' ) as q2 on q1.id_call_type = q2.id_call_type inner join ( SELECT id_geo_place,neighborhooods FROM dim_geo_place )as q3 on q1.id_geo_place = q3.id_geo_place GROUP BY  q3.neighborhooods")
+        self.queryArray.append("SELECT neighborhooods, COUNT(DISTINCT q1.call_number) FROM(((SELECT * FROM dispatch911_frag_2010) UNION ALL (SELECT * FROM dispatch911_frag_2011) UNION ALL	(SELECT * FROM dispatch911_frag_2012) UNION ALL	(SELECT * FROM dispatch911_frag_2013) UNION ALL	(SELECT * FROM dispatch911_frag_2014) UNION ALL	(SELECT * FROM dispatch911_frag_2015) ) as q1      INNER JOIN (SELECT id_call_type,call_type FROM dim_call_type as calltype WHERE calltype.call_type='HazMat') as q2 on q1.id_call_type = q2.id_call_type INNER JOIN(SELECT id_geo_place,neighborhooods FROM dim_geo_place)as q3 on q1.id_geo_place = q3.id_geo_place) GROUP BY  q3.neighborhooods ")
 
         # Query 2 (No vista)    #5
         self.queryArray.append("select dayquery.call_type, (minutes_day), (minutes_night) from (select  call_type, avg(minutes) as minutes_day from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date where recdate.hour_f in (1,2,3,4,5,6,7,8,9,10,11,12) group by call_type ) AS dayquery inner join (select  call_type, avg(minutes) as minutes_night from dispatch911_dimensions  fact INNER JOIN dim_duration  dur on (fact.id_duration = dur.id_duration) INNER JOIN dim_call_type as emergency on fact.id_call_type = emergency.id_call_type INNER JOIN dim_received_date as recdate on fact.id_received_date = recdate.id_received_date where recdate.hour_f in (13,14,15,16,17,18,19,20,21,22,23,24) group by call_type ) AS nightquery on dayquery.call_type = nightquery.call_type")
@@ -73,11 +73,11 @@ class QueryTester:
         self.queryArray.append("select emergency.call_type, count(*), avg(dur.minutes) from dispatch911_dimensions as fact inner join dim_call_type as emergency on fact.id_call_type = emergency.id_call_type inner join dim_duration as dur on fact.id_duration = dur.id_duration inner join dim_responsibility as resp on fact.id_responsibility = resp.id_responsibility where resp.battalion = 'B01' group by emergency.call_type")
 
         # Query 8 (Original)    #17
-        self.queryArray.append("select box, count (distinct call_number) as number_of_calls from dispatch911_original as fact where city='SAN FRANCISCO' and date_part('year', received_dttm) = '2015' group by box order by 2 desc")
+        self.queryArray.append("SELECT box, COUNT (DISTINCT call_number) as number_of_calls FROM dispatch911_original as fact WHERE city='SAN FRANCISCO' and date_part('year', received_dttm) in ('2015','2016','2017') GROUP BY box ORDER BY 2 DESC")
         # Query 8 (Dimension)   #18
-        self.queryArray.append("select box, count (distinct call_number) as number_of_calls from (	 (select * from dispatch911_dimensions as fact) as q1 inner join (select id_geo_place from dim_geo_place as geo where geo.city='SAN FRANCISCO') as q2 on q1.id_geo_place = q2.id_geo_place inner join (select recdate.id_received_date from dim_received_date as recdate where recdate.year_f ='2015' )as q2bis on q1.id_received_date = q2bis.id_received_date ) inner join ( select id_responsibility, box from dim_responsibility as resp ) as q3 on q1.id_responsibility = q3.id_responsibility group by box order by 2 desc")
+        self.queryArray.append("SELECT box, COUNT (DISTINCT call_number) as number_of_calls FROM ((SELECT *	FROM dispatch911_dimensions as fact) as q1 	 JOIN 	(SELECT id_geo_place 		FROM dim_geo_place as geo WHERE geo.city='SAN FRANCISCO') as q2 	on q1.id_geo_place = q2.id_geo_place 	 JOIN 	(SELECT recdate.id_received_date 	 	FROM dim_received_date as recdate 	 	WHERE recdate.year_f in ('2015','2016','2017') 	)as q2bis 	on q1.id_received_date = q2bis.id_received_date )  JOIN (  SELECT id_responsibility, box 	FROM dim_responsibility as resp ) as q3 on q1.id_responsibility = q3.id_responsibility GROUP BY box ORDER BY 2 DESC")
         # Query 8 (Frag)        #19
-        self.queryArray.append("select box, count (distinct call_number) as number_of_calls from  ((select * from dispatch911_frag_2000 as fact) as q1 inner join (select id_geo_place from dim_geo_place as geo where geo.city='SAN FRANCISCO') as q2 on q1.id_geo_place = q2.id_geo_place ) inner join (  select id_responsibility, box from dim_responsibility as resp ) as q3 on q1.id_responsibility = q3.id_responsibility group by box order by 2 desc")
+        self.queryArray.append("SELECT box, COUNT (DISTINCT call_number) as number_of_calls FROM  (	 	( (SELECT * FROM dispatch911_frag_2015)  UNION ALL (SELECT * FROM dispatch911_frag_2016)  UNION ALL (SELECT * FROM dispatch911_frag_2017) ) as q1 	INNER JOIN 	(SELECT id_geo_place 		FROM dim_geo_place as geo 		WHERE geo.city='SAN FRANCISCO') as q2 	on q1.id_geo_place = q2.id_geo_place ) INNER JOIN (  SELECT id_responsibility, box 	FROM dim_responsibility as resp ) as q3 on q1.id_responsibility = q3.id_responsibility GROUP BY box ORDER BY 2 DESC")
 
     def computeAndWriteAvgs(self, block, usingIndex):
         queryIndex=1
@@ -90,7 +90,7 @@ class QueryTester:
                     queryTime=queryTime+(time.time()-query_start_time)
                 #print(queryTime/(i+1))
 
-            outResultRow=[block, queryIndex, usingIndex, queryTime / (self.queryIterations-2) * 1000]
+            outResultRow=[block, queryIndex, usingIndex, queryTime / (self.queryIterations-1) * 1000]
             self.resultsCsvWriter.writerow(outResultRow)
             queryIndex=queryIndex+1
             print(outResultRow)
@@ -110,10 +110,6 @@ class QueryTester:
         cur.execute("DROP INDEX dispatch_date_calltype;")
 
 def createTables(cur,conn):
-    #cur.execute("CREATE TYPE enum_call_type AS ENUM ('Administrative','Aircraft Emergency','Alarms','Assist Police','Citizen Assist / Service Call','Confined Space / Structure Collapse','Electrical Hazard','Elevator / Escalator Rescue','Explosion','Extrication / Entrapped (Machinery  Vehicle)','Fuel Spill','Gas Leak (Natural and LP Gases)','HazMat','High Angle Rescue','Industrial Accidents','Lightning Strike (Investigation)','Marine Fire','Medical Incident','Mutual Aid / Assist Outside Agency','Odor (Strange / Unknown)','Oil Spill','Other','Outside Fire','Smoke Investigation (Outside)','Structure Fire','Suspicious Package','Traffic Collision','Train / Rail Fire','Train / Rail Incident','Transfer','Vehicle Fire','Water Rescue','Watercraft in Distress')")
-    #cur.execute("CREATE TYPE enum_call_type_group AS ENUM ('Fire','Potentially Life-Threatening','Non Life-threatening','Alarm','NotAssigned')")
-
-    #cur.execute("DROP TABLE IF NOT EXISTS dispatch911_original,dim_received_date,dim_duration,dim_geo_place,dim_responsibility,dim_call_type,dispatch911_dimensions")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_received_date(id_received_date integer NOT NULL,received_DtTm timestamp without time zone, hour_f smallint, day_f smallint, month_f smallint, year_f smallint, season smallint)")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_duration (id_duration smallint NOT NULL,minutes smallint NOT NULL,lessFive boolean NOT NULL DEFAULT '0',lessFifteen boolean NOT NULL DEFAULT '0',lessTwentyfive boolean NOT NULL DEFAULT '0',moreTwentyfive boolean NOT NULL DEFAULT '0')")
     cur.execute("CREATE TABLE IF NOT EXISTS dim_geo_place(id_geo_place Integer NOT NULL,address varchar(100),city varchar(50),zipcode integer,Neighborhooods varchar(50))")
@@ -147,7 +143,6 @@ def putGeoPlaceTableInDictionary(dictLoc):
         return queryRes[len(queryRes)-1][0]
     else:
         return 0
-
 
 def putDateTableInDictionary(dict):
     cur.execute("SELECT id_received_date, received_DtTm FROM dim_received_date")
@@ -227,7 +222,7 @@ def getDimensionCallTypeRow(call_type,call_type_group,tempTableCallType):
     else:
         return id
 
-#convert unknown priority values to known ones (2 non-emergency,3 emergency)
+#Convert unknown priority values to known ones (2 non-emergency,3 emergency)
 def mapPriority(priority):
     # Priority levels:
     # A,B,C | 2 (driving without lights/sirens)
@@ -241,7 +236,6 @@ def mapPriority(priority):
         return 1
 
 def rowManipulation(row,cur):
-
     call_number=row[0]
     unit_id=row[1]
     incident_number=row[2]
@@ -346,14 +340,8 @@ def rowManipulation(row,cur):
         newFragFilePath(dt.year, fragTablesPath,cur)
     # +++ ---------------------------------------- +++
     # ++++++++++++++++++++++++++++++++++++++++++++++++
-    '''
-    for i in range(35):
-        print(i,row[i])
-    print("---")
-    '''
     return manRow
 
-import string
 def randomStr(size=6, chars=string.ascii_uppercase + string.digits+string.ascii_lowercase):
     return ''.join(random.choice(chars) for x in range(size))
 
@@ -368,7 +356,6 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
     outputFakeRows = Path.cwd() / 'datasource/fakeRows.csv'
 
     f = codecs.open(outputFakeRows, 'w', encoding='utf-16-le')
-    # f = open(outputFakeRows, 'a', newline='')
     writer = csv.writer(f, lineterminator='\n', delimiter=',')
 
     for i in range(numOfRows):
@@ -398,7 +385,50 @@ def generateConsistentFakeRows(tableDurata, tableGeoPlace, tableDate, tableRespo
     f.close()
 
 def createCallTypeDictionary():
-    dictCallType={'Administrative':'Fire','Aircraft Emergency':'Alarm','Alarms':'Alarm','Assist Police':'Alarm','Citizen Assist / Service Call':'Alarm','Confined Space / Structure Collapse':'Fire','Electrical Hazard':'Alarm','Elevator / Escalator Rescue':'Alarm','Explosion':'Fire','Extrication / Entrapped (Machinery  Vehicle)':'Fire','Fuel Spill':'Alarm','Gas Leak (Natural and LP Gases)':'Alarm','HazMat':'Alarm','HazMat':'Fire','High Angle Rescue':'Fire','Industrial Accidents':'Fire','Marine Fire':'Fire','Medical Incident':'Alarm','Medical Incident':'Non Life-threatening','Medical Incident':'Potentially Life-Threatening','Mutual Aid / Assist Outside Agency':'Fire','Odor (Strange / Unknown)':'Alarm','Odor (Strange / Unknown)':'Fire','Oil Spill':'Alarm','Other':'Alarm','Other':'Non Life-threatening','Other':'Potentially Life-Threatening','Outside Fire':'Alarm','Outside Fire':'Fire','Smoke Investigation (Outside)':'Alarm','Structure Fire':'Alarm','Structure Fire':'Fire','Structure Fire':'Potentially Life-Threatening','Suspicious Package':'Fire','Traffic Collision':'Non Life-threatening','Traffic Collision':'Potentially Life-Threatening','Train / Rail Fire':'Fire','Train / Rail Incident':'Fire','Vehicle Fire':'Alarm','Vehicle Fire':'Fire','Water Rescue':'Fire','Water Rescue':'Potentially Life-Threatening','Watercraft in Distress':'Alarm','Watercraft in Distress':'Fire','Extrication / Entrapped (Machinery, Vehicle)':'Alarm'}
+    dictCallType={'Administrative':'Fire',
+                  'Aircraft Emergency':'Alarm',
+                  'Alarms':'Alarm',
+                  'Assist Police':'Alarm',
+                  'Citizen Assist / Service Call':'Alarm',
+                  'Confined Space / Structure Collapse':'Fire',
+                  'Electrical Hazard':'Alarm',
+                  'Elevator / Escalator Rescue':'Alarm',
+                  'Explosion':'Fire',
+                  'Extrication / Entrapped (Machinery  Vehicle)':'Fire',
+                  'Fuel Spill':'Alarm',
+                  'Gas Leak (Natural and LP Gases)':'Alarm',
+                  'HazMat':'Alarm',
+                  'HazMat':'Fire',
+                  'High Angle Rescue':'Fire',
+                  'Industrial Accidents':'Fire',
+                  'Marine Fire':'Fire',
+                  'Medical Incident':'Alarm',
+                  'Medical Incident':'Non Life-threatening',
+                  'Medical Incident':'Potentially Life-Threatening',
+                  'Mutual Aid / Assist Outside Agency':'Fire',
+                  'Odor (Strange / Unknown)':'Alarm',
+                  'Odor (Strange / Unknown)':'Fire',
+                  'Oil Spill':'Alarm','Other':'Alarm',
+                  'Other':'Non Life-threatening',
+                  'Other':'Potentially Life-Threatening',
+                  'Outside Fire':'Alarm',
+                  'Outside Fire':'Fire',
+                  'Smoke Investigation (Outside)':'Alarm',
+                  'Structure Fire':'Alarm',
+                  'Structure Fire':'Fire',
+                  'Structure Fire':'Potentially Life-Threatening',
+                  'Suspicious Package':'Fire',
+                  'Traffic Collision':'Non Life-threatening',
+                  'Traffic Collision':'Potentially Life-Threatening',
+                  'Train / Rail Fire':'Fire',
+                  'Train / Rail Incident':'Fire',
+                  'Vehicle Fire':'Alarm',
+                  'Vehicle Fire':'Fire',
+                  'Water Rescue':'Fire',
+                  'Water Rescue':'Potentially Life-Threatening',
+                  'Watercraft in Distress':'Alarm',
+                  'Watercraft in Distress':'Fire',
+                  'Extrication / Entrapped (Machinery, Vehicle)':'Alarm'}
 
     return dictCallType;
 
@@ -427,8 +457,6 @@ def cityValidation(cityName):
         return "TREASURE ISLAND"
     return cityName;
 
-
-
 def rowValidation(row,dictCallType):
 
     if row[25] == '' or row[25] == 'None' or row[25] is None:
@@ -436,36 +464,36 @@ def rowValidation(row,dictCallType):
             row[25] = dictCallType.get(row[3])
         else:
             row[25]= 'NotAssigned'
-    if row[31] == '' or row[31] == 'None' or row[31] is None: #Colonna 31: quartiere di SF, non può essere None
+    if row[31] == '' or row[31] == 'None' or row[31] is None:
         return False
-    if row[21]=="":     #Colonna 21: priorità, non può essere nulla
+    if row[21]=="":     #priority1
         return False
-    if row[22]=="":     #Colonna 22: priorità chiamata, non può essere nulla
+    if row[22]=="":     #priority2
         return False
-    if row[23]=="":     #Colonna 23: priorità finale, non può essere nulla
+    if row[23]=="":     #priority3
         return False
-    if row[6]=="":     #Colonna DATA chiamata, se assente usa data corrente come placeholder
+    if row[6]=="":      #call_date
         yearRandom=random.randint(2020,2040)
         row[6]= datetime.datetime.strftime(datetime.datetime.now().replace(year=yearRandom), "%Y-%m-%dT%H:%M:%S")
-    if row[10]=="" or (row[10]==row[6] and row[6!=""])or row[10]<row[6]:     #Colonna 10: data intervento, genera data con un ritardo in minuti casuale per la data d'arrivo sul sito se assente o invalida
+    if row[10]=="" or (row[10]==row[6] and row[6!=""])or row[10]<row[6]:
         row[10]=row[6]
         onSiteDate=datetime.datetime.strptime(row[10], "%Y-%m-%dT%H:%M:%S")
         minutesOffset=random.randint(10,40)
         onSiteDate=onSiteDate+datetime.timedelta(minutes=minutesOffset)
         row[10]=datetime.datetime.strftime(onSiteDate, "%Y-%m-%dT%H:%M:%S")
-    if row[15]== "":    #Colonna 15: address
+    if row[15]== "":    #address
         return False
-    if row[16]=="":     #Colonna 16: city
+    if row[16]=="":     #city
         return False
     else:
         row[16]=cityValidation(row[16])
-    if row[17]=="":     #Colonna 17: zipcode
+    if row[17]=="":     #zipcode
         return False
-    if row[19]=="":     #Colonna 19: station area
+    if row[19]=="":     #station area
         return False
-    if row[18] == "":  # Colonna 18: battalion
+    if row[18] == "":   #battalion
         return False
-    if row[20] == "":  # Colonna 20: box
+    if row[20] == "":   #box
         return False
 
     for i in range(len(row)):
@@ -507,7 +535,6 @@ def exportDimensionDateToCsv(dict,path,lastID):
     fl.close()
 
 def exportDimensionGeoPlaceToCsv(dict, path, lastID):
-    #tokenize value string
     with open(path, 'w', newline='') as fl:
         for k, v in dict.items():
             if v > lastID or lastID==0:
@@ -537,7 +564,6 @@ def exportFactOriginalToCsv(f, manRow):
     writer.writerow(manRow)
 
 def exportFactDimToCsv(f, manRow, idDuration, idDate, idGeoPlace, idResponsibility, idCallType):
-    #stw = (repr(idDate) + ";" + repr(idGeoPlace) + ";" + repr(idDuration) + ";" + repr(idResponsibility) + ";" + repr(idCallType) + ";" + manRow[0] + ";" + repr(manRow[1]) + ";" + repr(manRow[2]) + ";" + repr(manRow[4]) + ";" + repr(manRow[5]) +  ";" + repr(manRow[5]) +  ";" + repr(manRow[7]) + ";" + repr(manRow[8])+";" + repr(manRow[9]) +";" + repr(manRow[10]) +";" + repr(manRow[12]) +";" + repr(manRow[11]) +";" + repr(manRow[13]) +";" + repr(manRow[14]) +";" + repr(manRow[21]) +";" + repr(manRow[22]) +";" + repr(manRow[23]) +";" + repr(manRow[24]) +";" + repr(manRow[26]) +";" + repr(manRow[27]) +";" + repr(manRow[28]) +";" + repr(manRow[29]) +";" + repr(manRow[30]) +";" + repr(manRow[32]) +";" + repr(manRow[33]) +"\n")
     stw = [(idDate),(idGeoPlace),(idDuration),(idResponsibility),(idCallType),manRow[0],(manRow[1]),(manRow[2]),(manRow[4]),(manRow[5]),(manRow[7]),(manRow[8]), (manRow[9]) , (manRow[10]) , (manRow[11]) , (manRow[12]) , (manRow[13]) , (manRow[14]) , (manRow[21]) , (manRow[22]) , (manRow[23]) , (manRow[24]) , (manRow[26]) , (manRow[27]) , (manRow[28]) , (manRow[29]) , (manRow[30]) , (manRow[32]) , (manRow[33])]
 
     writer = csv.writer(f,lineterminator='\n', delimiter=';')
@@ -555,7 +581,6 @@ def newFragFilePath(year,fragTablesPath,cur):
     fragTablesPath[year]= fragFile
 
 def exportFactToFragCSV(fragTablesPath ,manRow, idDuration, idDate, idGeoPlace, idResponsibility, idCallType):
-#def exportFactToFragCSV(row,fragTablesPath):
     dt=datetime.datetime.strptime(manRow[6],"%Y-%m-%dT%H:%M:%S")
     stw = [(idDate),(idGeoPlace),(idDuration),(idResponsibility),(idCallType),manRow[0],(manRow[1]),(manRow[2]),(manRow[4]),(manRow[5]),(manRow[7]),(manRow[8]), (manRow[9]) , (manRow[10]) , (manRow[11]) , (manRow[12]) , (manRow[13]) , (manRow[14]) , (manRow[21]) , (manRow[22]) , (manRow[23]) , (manRow[24]) , (manRow[26]) , (manRow[27]) , (manRow[28]) , (manRow[29]) , (manRow[30]) , (manRow[32]) , (manRow[33])]
     writer = csv.writer(fragTablesPath.get(dt.year).fileDesc, lineterminator='\n', delimiter=';')
@@ -599,7 +624,6 @@ inputCsvPathFAKE = Path.cwd() / 'datasource/fakeRows.csv'
 inputCsvPathTEST = Path.cwd() / 'datasource/testPython.csv'
 
 inputList = []
-'''
 inputList.append(inputCsvPath1)
 inputList.append(inputCsvPath2)
 inputList.append(inputCsvPath3)
@@ -618,16 +642,11 @@ inputList.append(inputCsvPath15)
 inputList.append(inputCsvPath16)
 inputList.append(inputCsvPath17)
 inputList.append(inputCsvPath18)
-#inputList.append(inputCsvPath19)
-'''
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathFAKE)
 inputList.append(inputCsvPathFAKE)
-'''
-inputList.append(inputCsvPathTEST)
-'''
 
 dimDurationCSVPath = Path.cwd() / 'output/dim_duration.csv'
 dimDateCSVPath= Path.cwd() / 'output/dim_date.csv'
@@ -652,12 +671,6 @@ elapsedTimeMatView=0
 elapsedTimeOther=0
 elapsedTimeIndex=0
 
-conn = psycopg2.connect(postgresConnectionString)
-cur = conn.cursor()
-
-createTables(cur,conn)
-
-# Dictionaries
 callTypeGroupDictionary={
                             0:'Fire',
                             1:'Potentially Life-Threatening',
@@ -672,6 +685,22 @@ tempTableDate={}
 tempTableResponsibility={}
 tempTableCallType={}
 fragTablesPath={}
+
+conn = psycopg2.connect(postgresConnectionString)
+cur = conn.cursor()
+
+createTables(cur,conn)
+
+
+# TODO Da eliminare
+newFragFilePath(2010, fragTablesPath, cur)
+newFragFilePath(2011, fragTablesPath, cur)
+newFragFilePath(2012, fragTablesPath, cur)
+newFragFilePath(2013, fragTablesPath, cur)
+newFragFilePath(2014, fragTablesPath, cur)
+newFragFilePath(2015, fragTablesPath, cur)
+newFragFilePath(2016, fragTablesPath, cur)
+newFragFilePath(2017, fragTablesPath, cur)
 
 csvTimeResults = open(csvTimeResultsPath, 'w', newline='')
 timeCsvWriter = csv.writer(csvTimeResults, lineterminator='\n', delimiter=';')
@@ -696,7 +725,7 @@ for currentCSV in inputList:
         generateConsistentFakeRows(tempTableDurata, tempTableGeoPlace, tempTableDate, tempTableResponsibility,
                                    tempTableCallType, 1000000)
 
-    start_local_time=time.time()    #TODO se mettiamo i clock per ogni evento tipo Ext, Transf, Load, questo ci vuole?
+    start_local_time=time.time()
     clockTimeExtraction=time.time()    # Start (Extraction phase)
 
     f=open(factOriginal_csvPATH, 'w', newline='')
@@ -724,22 +753,17 @@ for currentCSV in inputList:
                     clockTimeOther = time.time()
 
                     idDuration = getDimensionDurationRow(manRow[34], tempTableDurata)
-                    #if (idDuration == 0):
-                    #    idDuration += 1;
+
                     idDate = getDimensionDateRow(manRow[6], tempTableDate)
-                    #if (idDate == 0):
-                    #    idDate += 1;
+
                     idGeoPlace = getDimensionGeoPlaceRow(manRow[15], manRow[16], manRow[17], manRow[31],
                                                          tempTableGeoPlace)
-                    #if (idGeoPlace == 0):
-                    #    idGeoPlace += 1;
+
                     idResponsibility = getDimensionResponsibilityRow(manRow[20], manRow[19], manRow[18],
                                                                      tempTableResponsibility)
-                    #if (idResponsibility == 0):
-                    #    idResponsibility += 1;
+
                     idCallType = getDimensionCallTypeRow(manRow[3], manRow[25], tempTableCallType)
-                    #if (idCallType == 0):
-                    #    idCallType += 1;
+
                     elapsedTimeOther = elapsedTimeOther + (time.time() - clockTimeOther)
                     # End (Transformation phase)
 
@@ -775,7 +799,6 @@ for currentCSV in inputList:
     f.close()
     g.close()
     closeFragmentationFiles(fragTablesPath)
-    #print("Fine fase estrazione e trasformazione (sec): %s" % (time.time() - start_local_time))
 
     # Re-Start (Loading)
     clockTimeLoading = time.time()
